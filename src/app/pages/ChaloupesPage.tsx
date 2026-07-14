@@ -2,7 +2,7 @@ import { useState } from "react";
 import { PageHeader, Btn, Card, Table } from "@/app/components/ui/Shared";
 import { C, Badge, StatusBadge, cn } from "@/app/components/layout/common";
 import { Anchor, Wrench, Edit, CheckCircle, Plus, X, Trash2 } from "lucide-react";
-import { useChaloupes } from "@/app/hooks/useChaloupes";
+import { useChaloupes } from "@/app/hooks/chaloupes/useChaloupes";
 
 export default function ChaloupesPage({ sub }: { sub: string }) {
   const { data: chaloupes = [], isLoading, isError } = useChaloupes();

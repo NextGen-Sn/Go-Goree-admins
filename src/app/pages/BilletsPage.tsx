@@ -1,8 +1,8 @@
 import { Btn, Card, PageHeader, SearchBar, Table } from "@/app/components/ui/Shared";
 import { C, Badge, StatusBadge, cn } from "@/app/components/layout/common";
 import { Ticket, FileText, BarChart2, Database, Printer, Eye, Download } from "lucide-react";
-import { useVoyages } from "@/app/hooks/useVoyages";
-import { useBillets } from "@/app/hooks/useBillets";
+import { useVoyages } from "@/app/hooks/voyages/useVoyages";
+import { useBillets } from "@/app/hooks/billets/useBillets";
 
 export default function BilletsPage({ sub }: { sub: string }) {
   const { data: voyages = [], isLoading: vLoading, isError: vError } = useVoyages();
