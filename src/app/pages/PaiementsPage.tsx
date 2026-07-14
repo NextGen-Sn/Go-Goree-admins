@@ -1,4 +1,4 @@
-import { PageHeader, Btn, Card, ChartCard, Table } from "@/app/components/ui/Shared";
+import { PageHeader, Btn, Card, ChartCard, Table, SearchBar } from "@/app/components/ui/Shared";
 import { C, Badge, StatusBadge } from "@/app/components/layout/common";
 import { Download, Filter, Ticket, ArrowUpRight, ArrowDownRight, Eye } from "lucide-react";
 import { useRepartitionPaiements, usePaiementsMonthly, useTransactions } from "@/app/hooks/usePaiements";
@@ -70,7 +70,7 @@ export default function PaiementsPage({ sub }: { sub: string }) {
       </div>
       <Card>
         <div className="flex gap-2 mb-4">
-          <div className="flex-1"><Table /></div>
+          <SearchBar placeholder="Rechercher par passager, ID..." />
         </div>
         <Table
           cols={["ID Transaction", "Passager", "Montant", "Méthode", "Date", "Statut", ""]}
