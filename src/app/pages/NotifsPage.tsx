@@ -1,10 +1,18 @@
+import { useState } from "react";
 import { PageHeader, Btn, Card, Table } from "@/app/components/ui/Shared";
 import { C, StatusBadge } from "@/app/components/layout/common";
 import { Smartphone, Mail, Bell, MessageSquare, Send, BellRing, Download } from "lucide-react";
-import { useNotifications } from "@/app/hooks/useNotifications";
+import { useNotifications, useBroadcastNotification } from "@/app/hooks/notifications/useNotifications";
+import { toast } from "sonner";
 
 export default function NotifsPage({ sub }: { sub: string }) {
-  const { isLoading, isError } = useNotifications();
+  const { data: notifications = [], isLoading, isError } = useNotifications();
+  const broadcastMutation = useBroadcastNotification();
+
+  const [message, setMessage] = useState("");
+  const [canal, setCanal] = useState("IN_APP"); // Default to IN_APP (in app + real-time reverb)
+  const [titre, setTitre] = useState("");
+
   const feedback = (
     <div className="space-y-2 mb-4">
       {isError && (
@@ -20,58 +28,92 @@ export default function NotifsPage({ sub }: { sub: string }) {
     </div>
   );
 
+  const handleBroadcast = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!message) {
+      toast.error("Veuillez saisir un message.");
+      return;
+    }
+
+    try {
+      const fullMessage = titre ? `[${titre}] ${message}` : message;
+      await broadcastMutation.mutateAsync({
+        canal: canal.toUpperCase(),
+        message: fullMessage,
+      });
+      toast.success("Campagne de notification diffusée avec succès !");
+      setMessage("");
+      setTitre("");
+    } catch (err) {
+      toast.error("Impossible de diffuser la notification.");
+    }
+  };
+
+  const handleUseTemplate = (title: string, msg: string) => {
+    setTitre(title);
+    setMessage(msg);
+    toast.success("Modèle de notification appliqué.");
+  };
+
   if (sub === "envoyer") {
     return (
-    <div className="p-6">
-      {feedback}
-      <PageHeader title="Envoyer une notification" subtitle="Communiquer avec les passagers" />
+      <div className="p-6">
+        {feedback}
+        <PageHeader title="Envoyer une notification" subtitle="Communiquer avec les passagers" />
         <div className="grid grid-cols-2 gap-6">
           <Card>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Composer le message</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Canaux d'envoi</label>
-                <div className="flex gap-2 flex-wrap">
-                  {[ ["SMS", Smartphone], ["Email", Mail], ["Push", Bell], ["In-App", MessageSquare] ].map(([l, I]) => (
-                    <label key={l as string} className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg cursor-pointer hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:bg-slate-800 transition-all text-slate-700 dark:text-slate-300">
-                      <input type="checkbox" className="accent-blue-600" defaultChecked />
-                      <I size={13} className="text-slate-500" />
-                      <span className="text-xs font-medium text-slate-700">{l as string}</span>
-                    </label>
-                  ))}
+            <form onSubmit={handleBroadcast}>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Composer le message</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Canal de diffusion principal</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {[
+                      { label: "In-App / Temps réel", key: "IN_APP", icon: MessageSquare },
+                      { label: "Email", key: "EMAIL", icon: Mail },
+                      { label: "SMS", key: "SMS", icon: Smartphone },
+                    ].map(item => (
+                      <button type="button" key={item.key} onClick={() => setCanal(item.key)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-medium transition-all ${
+                          canal === item.key 
+                            ? "border-blue-600 bg-blue-50 text-blue-700" 
+                            : "border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800"
+                        }`}>
+                        <item.icon size={13} />
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Titre</label>
+                  <input className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none bg-white dark:bg-slate-800"
+                    placeholder="Ex: Alerte embarquement" value={titre} onChange={e => setTitre(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Message</label>
+                  <textarea className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none resize-none bg-white dark:bg-slate-800"
+                    rows={5} placeholder="Rédigez votre message ici..." value={message} onChange={e => setMessage(e.target.value)} required />
+                </div>
+                <button type="submit" disabled={broadcastMutation.isPending}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow transition-colors">
+                  <Send size={13} /> Diffuser la notification
+                </button>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Destinataires</label>
-                <select className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none">
-                  <option>Tous les passagers</option>
-                  <option>Résidents uniquement</option>
-                  <option>Touristes uniquement</option>
-                  <option>Scolaires uniquement</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Titre</label>
-                <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none" placeholder="Ex: Information — Voyage 17h00" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Message</label>
-                <textarea className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none resize-none" rows={5} placeholder="Rédigez votre message ici..." />
-              </div>
-              <Btn label="Envoyer la notification" icon={Send} variant="primary" />
-            </div>
+            </form>
           </Card>
+          
           <Card>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Modèles prédéfinis</h3>
             <div className="space-y-2">
               {[
-                { titre: "Voyage annulé", desc: "Notification d'annulation avec information remboursement" },
-                { titre: "Retard de traversée", desc: "Information de délai pour le prochain voyage" },
-                { titre: "Promo résidents", desc: "Offre spéciale abonnement mensuel résidents" },
-                { titre: "Rappel réservation", desc: "Rappel avant le départ du voyage" },
-                { titre: "Bienvenue nouveau passager", desc: "Message d'accueil à l'inscription" },
+                { titre: "Voyage annulé", desc: "Notification d'annulation avec information de remboursement", msg: "Alerte : Le voyage de 17h00 est annulé en raison des conditions météorologiques. Remboursement automatique sur votre portefeuille." },
+                { titre: "Retard de traversée", desc: "Information de délai pour le prochain voyage", msg: "Info : Le départ de la chaloupe Coumba Castel de 10h est retardé de 15 minutes." },
+                { titre: "Promo résidents", desc: "Offre spéciale abonnement mensuel résidents", msg: "Bonne nouvelle : Pensez à renouveler votre abonnement mensuel pour continuer à voyager sans limite !" },
+                { titre: "Rappel embarquement", desc: "Rappel avant le départ du voyage", msg: "Rappel : Embarquement en cours pour le départ de 16h00. Veuillez vous présenter aux portillons." },
               ].map((t, i) => (
-                <button key={i} className="w-full flex items-start gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-200 dark:hover:border-blue-700 hover:bg-blue-50/40 dark:hover:bg-blue-900/20 transition-all text-left">
+                <button key={i} onClick={() => handleUseTemplate(t.titre, t.msg)}
+                  className="w-full flex items-start gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-200 hover:bg-blue-50/40 transition-all text-left">
                   <BellRing size={16} className="mt-0.5 shrink-0" style={{ color: C.ocean }} />
                   <div>
                     <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.titre}</div>
@@ -88,18 +130,20 @@ export default function NotifsPage({ sub }: { sub: string }) {
 
   if (sub === "historique") {
     return (
-    <div className="p-6">
-      {feedback}
-      <PageHeader title="Historique des notifications" subtitle="Toutes les communications envoyées"
+      <div className="p-6">
+        {feedback}
+        <PageHeader title="Historique des notifications" subtitle="Toutes les communications envoyées"
           actions={<Btn label="Exporter" icon={Download} variant="secondary" />} />
         <Card>
           <Table
-            cols={["Date", "Canal", "Destinataires", "Titre", "Taux ouverture", "Statut"]}
-            rows={[
-              ["11 Jul 2026", "SMS + Push", "834", "Bon voyage — Dakar↔Gorée", "—", <StatusBadge statut="Validé" />],
-              ["10 Jul 2026", "Email", "215", "Rappel voyage 19h", "68%", <StatusBadge statut="Validé" />],
-              ["09 Jul 2026", "Push + In-App", "142", "Promo abonnement résidents", "81%", <StatusBadge statut="Validé" />],
-            ]}
+            cols={["Date", "Canal", "Destinataires", "Message", "Statut"]}
+            rows={notifications.map(n => [
+              <span key={`date-${n.id}`}>{n.date}</span>,
+              <Badge key={`canal-${n.id}`} label={n.canal} color={n.canal === "SMS" ? "blue" : n.canal === "EMAIL" ? "teal" : "purple"} />,
+              <span key={`dest-${n.id}`}>{n.destinataires}</span>,
+              <span key={`msg-${n.id}`} className="text-xs truncate max-w-sm block" title={n.message}>{n.message}</span>,
+              <StatusBadge key={`stat-${n.id}`} statut="Validé" />,
+            ])}
           />
         </Card>
       </div>
@@ -107,12 +151,19 @@ export default function NotifsPage({ sub }: { sub: string }) {
   }
 
   const labels: Record<string, string> = { sms: "SMS", email: "Email", push: "Notifications Push", inapp: "In-App" };
+  const canalFilter = sub.toUpperCase();
+
   return (
     <div className="p-6">
       {feedback}
       <PageHeader title={`Canal — ${labels[sub] ?? sub}`} subtitle="Statistiques et historique du mois" />
       <div className="grid grid-cols-4 gap-4 mb-6">
-        {[ ["Envoyés (mois)", "1 842", C.ocean], ["Délivrés", "1 798", C.teal], ["Taux d'ouverture", "73.2%", C.green], ["Échecs", "44", C.red] ].map(([l, v, c]) => (
+        {[ 
+          ["Envoyés (mois)", notifications.filter(n => n.canal === canalFilter).length, C.ocean], 
+          ["Délivrés", notifications.filter(n => n.canal === canalFilter).length, C.teal], 
+          ["Taux d'ouverture", "100%", C.green], 
+          ["Échecs", "0", C.red] 
+        ].map(([l, v, c]) => (
           <Card key={l as string} className="text-center py-4">
             <div className="text-xl font-bold font-mono" style={{ color: c as string }}>{v as string}</div>
             <div className="text-xs text-slate-500 mt-1">{l as string}</div>
@@ -121,11 +172,13 @@ export default function NotifsPage({ sub }: { sub: string }) {
       </div>
       <Card>
         <Table
-          cols={["Date", "Destinataires", "Titre", "Statut"]}
-          rows={[
-            ["11 Jul 2026", "834", "Bon voyage — Dakar↔Gorée", <StatusBadge statut="Validé" />],
-            ["10 Jul 2026", "215", "Rappel voyage 19h", <StatusBadge statut="Validé" />],
-          ]}
+          cols={["Date", "Destinataires", "Message", "Statut"]}
+          rows={notifications.filter(n => n.canal === canalFilter).map(n => [
+            <span key={`date-${n.id}`}>{n.date}</span>,
+            <span key={`dest-${n.id}`}>{n.destinataires}</span>,
+            <span key={`msg-${n.id}`} className="text-xs truncate max-w-lg block" title={n.message}>{n.message}</span>,
+            <StatusBadge key={`stat-${n.id}`} statut="Validé" />,
+          ])}
         />
       </Card>
     </div>

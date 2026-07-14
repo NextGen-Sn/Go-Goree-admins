@@ -1,11 +1,19 @@
 import { useState } from "react";
 import { PageHeader, Btn, Card, Table } from "@/app/components/ui/Shared";
-import { C, Badge, StatusBadge } from "@/app/components/layout/common";
+import { C, StatusBadge } from "@/app/components/layout/common";
 import { ChevronLeft, FileSearch, Eye, CheckCircle, XCircle, Calendar, MapPin, Download } from "lucide-react";
-import { useDemandesResidents } from "@/app/hooks/useResidents";
+import { 
+  useDemandesEnAttente, 
+  useDemandesRefusees, 
+  useDemandesHistorique, 
+  useTraiterDemande 
+} from "@/app/hooks/residents/useResidents";
+import { toast } from "sonner";
 
 function ResidentsListePage() {
-  const { data: demandesResidents = [], isLoading, isError } = useDemandesResidents();
+  const { data: demandesResidents = [], isLoading, isError } = useDemandesEnAttente();
+  const traiterMutation = useTraiterDemande();
+
   const feedback = (
     <div className="space-y-2 mb-4">
       {isError && (
@@ -20,12 +28,41 @@ function ResidentsListePage() {
       )}
     </div>
   );
+  
   const [examineId, setExamineId] = useState<string | null>(null);
   const [refuseMode, setRefuseMode] = useState(false);
   const [refuseReason, setRefuseReason] = useState("");
 
+  const handleValider = async (id: string) => {
+    try {
+      await traiterMutation.mutateAsync({ id, statut: "validee" });
+      toast.success("Demande de résidence approuvée avec succès.");
+      setExamineId(null);
+    } catch (err) {
+      toast.error("Erreur lors de la validation.");
+    }
+  };
+
+  const handleRefuser = async (id: string) => {
+    if (!refuseReason) {
+      toast.error("Veuillez saisir un motif de refus.");
+      return;
+    }
+    try {
+      await traiterMutation.mutateAsync({ id, statut: "refusee", motif: refuseReason });
+      toast.success("Demande de résidence refusée.");
+      setExamineId(null);
+      setRefuseMode(false);
+      setRefuseReason("");
+    } catch (err) {
+      toast.error("Erreur lors du refus de la demande.");
+    }
+  };
+
   if (examineId) {
-    const dem = demandesResidents.find(d => d.id === examineId)!;
+    const dem = demandesResidents.find(d => d.id === examineId);
+    if (!dem) return null;
+
     return (
       <div className="p-6">
         {feedback}
@@ -43,16 +80,17 @@ function ResidentsListePage() {
             <Card>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Documents soumis</h3>
               <div className="grid grid-cols-3 gap-4">
-                {dem.docs.map(doc => (
+                {dem.docs && dem.docs.map(doc => (
                   <div key={doc} className="text-center">
                     <div className="h-36 rounded-xl bg-slate-100 dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 flex flex-col items-center justify-center mb-2 hover:bg-slate-50 dark:hover:bg-slate-600 cursor-pointer transition-colors">
                       <FileSearch size={28} className="text-slate-300 mb-2" />
                       <span className="text-xs font-semibold text-slate-500">Aperçu</span>
                     </div>
-                    <div className="text-xs font-semibold text-slate-700 dark:text-slate-200">{doc}</div>
-                    <button className="mt-1 text-xs font-medium flex items-center gap-1 mx-auto hover:underline" style={{ color: C.ocean }}>
-                      <Eye size={11} /> Visualiser
-                    </button>
+                    <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 overflow-hidden text-ellipsis whitespace-nowrap px-1" title={doc}>{doc}</div>
+                    <a href={`http://localhost:8000/storage/${doc}`} target="_blank" rel="noreferrer"
+                       className="mt-1 text-xs font-medium flex items-center gap-1 justify-center hover:underline" style={{ color: C.ocean }}>
+                      <Eye size={11} /> Télécharger / Visualiser
+                    </a>
                   </div>
                 ))}
               </div>
@@ -74,55 +112,40 @@ function ResidentsListePage() {
 
           <div className="space-y-4">
             <Card>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Décision</h3>
-              <div className="space-y-3">
-                {!refuseMode ? (
-                  <>
-                    <button onClick={() => { setExamineId(null); }}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-colors"
-                      style={{ background: C.green }}>
-                      <CheckCircle size={15} /> Valider la demande
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Décision administrative</h3>
+              <p className="text-xs text-slate-400 mb-4">Vérifiez la conformité des justificatifs fournis avant de valider.</p>
+              
+              {!refuseMode ? (
+                <div className="space-y-2">
+                  <button onClick={() => handleValider(dem.id)} disabled={traiterMutation.isPending}
+                    className="w-full flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow transition-colors">
+                    <CheckCircle size={14} /> Valider le dossier
+                  </button>
+                  <button onClick={() => setRefuseMode(true)} disabled={traiterMutation.isPending}
+                    className="w-full flex items-center justify-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow transition-colors">
+                    <XCircle size={14} /> Refuser le dossier
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1.5">Motif de refus</label>
+                    <textarea rows={3} placeholder="Ex: Certificat de résidence non signé..."
+                      className="w-full p-2 text-xs border rounded-lg focus:outline-none"
+                      value={refuseReason} onChange={e => setRefuseReason(e.target.value)} />
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleRefuser(dem.id)} disabled={traiterMutation.isPending}
+                      className="flex-1 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-colors">
+                      Confirmer refus
                     </button>
-                    <button onClick={() => setRefuseMode(true)}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors border border-red-200 dark:border-red-700">
-                      <XCircle size={15} /> Refuser la demande
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <div className="p-3 bg-red-50 dark:bg-red-900/30 rounded-xl border border-red-200 dark:border-red-700">
-                      <div className="text-xs font-semibold text-red-700 mb-2">Motif de refus (obligatoire)</div>
-                      <textarea
-                        className="w-full text-sm border border-red-200 dark:border-red-700 rounded-lg p-2 focus:outline-none resize-none bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
-                        rows={4}
-                        placeholder="Précisez le motif de refus..."
-                        value={refuseReason}
-                        onChange={e => setRefuseReason(e.target.value)}
-                      />
-                    </div>
-                    <button
-                      disabled={!refuseReason.trim()}
-                      onClick={() => { if (refuseReason.trim()) { setExamineId(null); setRefuseMode(false); setRefuseReason(""); } }}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ background: C.red }}>
-                      <XCircle size={15} /> Confirmer le refus
-                    </button>
-                    <button onClick={() => setRefuseMode(false)}
-                      className="w-full text-sm text-slate-500 hover:text-slate-700 py-1 transition-colors">
+                    <button onClick={() => { setRefuseMode(false); setRefuseReason(""); }}
+                      className="px-3 py-1.5 border rounded-lg text-xs font-medium">
                       Annuler
                     </button>
-                  </>
-                )}
-              </div>
-            </Card>
-            <Card>
-              <div className="space-y-2 text-xs text-slate-600">
-                <div className="flex justify-between"><span className="text-slate-400">Documents soumis</span><span className="font-semibold text-slate-800 dark:text-slate-100">{dem.docs.length}/3</span></div>
-                <div className="flex justify-between"><span className="text-slate-400">Complétude</span>
-                  <Badge label={dem.docs.length >= 3 ? "Complète" : "Incomplète"} color={dem.docs.length >= 3 ? "green" : "amber"} />
+                  </div>
                 </div>
-                <div className="flex justify-between"><span className="text-slate-400">Statut</span><StatusBadge statut={dem.statut} /></div>
-              </div>
+              )}
             </Card>
           </div>
         </div>
@@ -130,49 +153,50 @@ function ResidentsListePage() {
     );
   }
 
-    return (
-      <div className="p-6">
-        {feedback}
-        <PageHeader title="Demandes résidents — En attente" subtitle={`${demandesResidents.length} demandes à traiter`} />
-      <div className="space-y-3">
-        {demandesResidents.map(d => (
-          <Card key={d.id} className="hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-4">
-              <div className="size-12 rounded-xl flex items-center justify-center text-base font-bold text-white shrink-0"
-                style={{ background: C.sidebarActive }}>
-                {d.nom.split(" ").map(w => w[0]).join("").slice(0, 2)}
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-semibold text-slate-900">{d.nom}</span>
-                  <span className="font-mono text-xs text-slate-400">{d.id}</span>
-                  <StatusBadge statut={d.statut} />
+  return (
+    <div className="p-6">
+      {feedback}
+      <PageHeader title="Demandes en attente" subtitle={`${demandesResidents.length} dossiers à traiter`} />
+      
+      {demandesResidents.length === 0 ? (
+        <Card className="text-center py-12 text-slate-400 text-sm">
+          Aucun dossier de résidence en attente d'approbation.
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {demandesResidents.map(d => (
+            <Card key={d.id}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">{d.nom}</h3>
+                  <div className="flex items-center gap-1 text-xs text-slate-400">
+                    <span className="bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-1.5 py-0.5 rounded font-mono font-semibold">{d.id.slice(0,8)}</span>
+                    <span className="text-slate-300">|</span>
+                    <span className="flex items-center gap-1"><Calendar size={11} /> {d.date}</span>
+                    <span className="text-slate-300">|</span>
+                    <span className="flex items-center gap-1"><MapPin size={11} /> {d.adresse}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-slate-400">
-                  <span className="flex items-center gap-1"><Calendar size={11} /> {d.date}</span>
-                  <span>Docs: {d.docs.join(", ")}</span>
-                  <span className="flex items-center gap-1"><MapPin size={11} /> {d.adresse}</span>
-                </div>
+                <Btn label="Examiner" icon={Eye} variant="primary" onClick={() => setExamineId(d.id)} />
               </div>
-              <Btn label="Examiner" icon={Eye} variant="primary" onClick={() => setExamineId(d.id)} />
-            </div>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 export default function ResidentsPage({ sub }: { sub: string }) {
-  const { data: demandesResidents = [], isLoading: oLoading, isError: oError } = useDemandesResidents();
+  const { data: enAttente = [], isLoading: waitL } = useDemandesEnAttente();
+  const { data: refusees = [], isLoading: refL } = useDemandesRefusees();
+  const { data: historique = [], isLoading: histL } = useDemandesHistorique();
+
+  const isLoading = waitL || refL || histL;
+
   const feedback = (
     <div className="space-y-2 mb-4">
-      {oError && (
-        <div className="rounded-lg border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-4 py-2.5 text-sm text-amber-700 dark:text-amber-400">
-          Données indisponibles — affichage des dernières données connues.
-        </div>
-      )}
-      {oLoading && (
+      {isLoading && (
         <div className="h-1 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
           <div className="h-full w-1/3 animate-pulse rounded-full bg-slate-400" />
         </div>
@@ -184,17 +208,19 @@ export default function ResidentsPage({ sub }: { sub: string }) {
 
   if (sub === "refusees") {
     return (
-    <div className="p-6">
-      {feedback}
-      <PageHeader title="Demandes refusées" subtitle="Historique des demandes non validées" />
+      <div className="p-6">
+        {feedback}
+        <PageHeader title="Demandes refusées" subtitle="Historique des dossiers rejetés" />
         <Card>
           <Table
             cols={["ID", "Nom", "Date", "Motif de refus", "Décision par"]}
-            rows={[
-              ["DR-0221", "Moustapha Sy", "28 Jun 2026", "Documents incomplets — certificat manquant", "Administrateur"],
-              ["DR-0215", "Aïssatou Dieng", "15 Jun 2026", "Photo non conforme aux normes", "Administrateur"],
-              ["DR-0208", "Omar Touré", "01 Jun 2026", "Adresse non vérifiable sur l'île", "Administrateur"],
-            ]}
+            rows={refusees.map(r => [
+              <span className="font-mono text-xs text-slate-400" key={`id-${r.id}`}>{r.id.slice(0, 8)}...</span>,
+              <span className="font-semibold text-slate-800 dark:text-slate-100" key={`nom-${r.id}`}>{r.nom}</span>,
+              <span key={`date-${r.id}`}>{r.date}</span>,
+              <span key={`motif-${r.id}`} className="text-red-600 font-medium text-xs bg-red-50 dark:bg-red-950/20 px-2 py-1 rounded">{r.motif_refus || "Documents non conformes"}</span>,
+              <span key={`by-${r.id}`}>Administrateur</span>,
+            ])}
           />
         </Card>
       </div>
@@ -204,29 +230,31 @@ export default function ResidentsPage({ sub }: { sub: string }) {
   return (
     <div className="p-6">
       {feedback}
-      <PageHeader title="Historique des demandes" subtitle="Toutes les demandes depuis l'ouverture"
+      <PageHeader title="Historique des demandes" subtitle="Tous les dossiers traités"
         actions={<Btn label="Exporter" icon={Download} variant="secondary" />} />
       <div className="grid grid-cols-4 gap-3 mb-6">
-        {[ ["Total demandes", "427", C.ocean], ["Validées", "389", C.green], ["Refusées", "29", C.red], ["En attente", "9", C.amber] ].map(([l, v, c]) => (
+        {[
+          ["Total demandes", historique.length, C.ocean],
+          ["Validées", historique.filter(h => h.statut === "Validé").length, C.green],
+          ["Refusées", historique.filter(h => h.statut === "Refusé").length, C.red],
+          ["En attente", enAttente.length, C.amber],
+        ].map(([l, v, c]) => (
           <Card key={l as string} className="text-center py-3">
-            <div className="text-xl font-bold font-mono" style={{ color: c as string }}>{v as string}</div>
+            <div className="text-xl font-bold font-mono animate-pulse" style={{ color: c as string }}>{v as string}</div>
             <div className="text-xs text-slate-500 mt-0.5">{l as string}</div>
           </Card>
         ))}
       </div>
       <Card>
         <Table
-          cols={["ID", "Nom", "Date", "Statut", "Traité par"]}
-          rows={[
-            ...demandesResidents,
-            { id: "DR-0230", nom: "Ibrahima Diagne", date: "07 Jul 2026", docs: [], statut: "Validé", cin: "", adresse: "" },
-            { id: "DR-0229", nom: "Fatou Cissokho", date: "05 Jul 2026", docs: [], statut: "Validé", cin: "", adresse: "" },
-            { id: "DR-0221", nom: "Moustapha Sy", date: "28 Jun 2026", docs: [], statut: "Refusé", cin: "", adresse: "" },
-          ].map(d => [
-            <span className="font-mono text-xs text-slate-500">{d.id}</span>,
-            d.nom, d.date,
-            <StatusBadge statut={d.statut} />,
-            "Administrateur",
+          cols={["ID", "Nom", "Date", "Adresse", "Statut", "Traité par"]}
+          rows={historique.map(d => [
+            <span className="font-mono text-xs text-slate-500" key={`id-${d.id}`}>{d.id.slice(0, 8)}...</span>,
+            <span className="font-semibold text-slate-800" key={`nom-${d.id}`}>{d.nom}</span>,
+            <span key={`date-${d.id}`}>{d.date}</span>,
+            <span key={`adr-${d.id}`}>{d.adresse}</span>,
+            <StatusBadge key={`statut-${d.id}`} statut={d.statut} />,
+            <span key={`by-${d.id}`}>Administrateur</span>,
           ])}
         />
       </Card>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, PageHeader, Table } from "@/app/components/ui/Shared";
 import { C, Badge, StatusBadge, cn } from "@/app/components/layout/common";
 import { Phone, Mail, Calendar } from "lucide-react";
-import { usePassagers } from "@/app/hooks/usePassagers";
+import { usePassagers } from "@/app/hooks/passagers/usePassagers";
 
 export default function PassagersPage() {
   const { data: passagers = [], isLoading, isError } = usePassagers();

@@ -4,7 +4,7 @@ import { Ticket, Banknote, Activity, Star, Download } from "lucide-react";
 import { monthlyData as mockMonthlyData, pieData as mockPieData, paiementData as mockPaiementData, hourlyData as mockHourlyData, chaloupesData as mockChaloupesData } from "@/app/data/mock/dashboard.mock";
 import { ResponsiveContainer, AreaChart, Area, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, LineChart, Line, PieChart as RPieChart, Pie, Cell, Legend, Bar } from "recharts";
 import { useQuery } from "@tanstack/react-query";
-import { getDashboardMetrics } from "@/app/services/analyticsService";
+import { getDashboardMetrics } from "@/app/services/analytics/analyticsService";
 
 export default function StatsPage({ sub }: { sub: string }) {
   const { data: metrics, isLoading, isError } = useQuery({

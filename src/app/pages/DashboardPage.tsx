@@ -4,7 +4,7 @@ import { KPICard, ChartCard, PageHeader, Btn, Table, Card, OccBar } from "@/app/
 import { Badge, StatusBadge, cn, C } from "@/app/components/layout/common";
 import { RefreshCw, FileText, Ticket, Banknote, Ship, Users, Scan, Wallet as WalletIcon, FileCheck, BarChart3 } from "lucide-react";
 import { motion } from "motion/react";
-import { useDashboard } from "@/app/hooks/useDashboard";
+import { useDashboard } from "@/app/hooks/dashboard/useDashboard";
 
 export default function DashboardPage() {
   const { ticketData, monthlyData, pieData, voyages, transactions, isLoading, isError } = useDashboard();

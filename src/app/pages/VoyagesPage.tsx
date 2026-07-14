@@ -1,16 +1,43 @@
-import React, { useState } from "react";
-import { PageHeader, Btn, Card, Table, ChartCard, SearchBar, KPICard } from "@/app/components/ui/Shared";
-import { Badge, StatusBadge, cn } from "@/app/components/layout/common";
-import { Plus, Filter, CheckCircle, Edit, Download, Printer, Eye, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
-import { useVoyages } from "@/app/hooks/useVoyages";
-import { useChaloupes } from "@/app/hooks/useChaloupes";
+import { useState } from "react";
+import { PageHeader, Btn, Card, Table, ChartCard, SearchBar } from "@/app/components/ui/Shared";
+import { StatusBadge, cn } from "@/app/components/layout/common";
+import { Plus, Filter, CheckCircle, Edit, Download, Eye, Trash2, Clock, X } from "lucide-react";
+import { 
+  useVoyages, 
+  useCreateVoyage, 
+  useUpdateVoyage, 
+  useDeleteVoyage, 
+  useGenererVoyages 
+} from "@/app/hooks/voyages/useVoyages";
+import { useChaloupes } from "@/app/hooks/chaloupes/useChaloupes";
+import { useTrajets } from "@/app/hooks/trajets/useTrajets";
+import { toast } from "sonner";
 
 export default function VoyagesPage({ sub }: { sub?: string }) {
-  const s = sub ?? "";
+  const s = sub ?? "liste";
+
   const { data: voyages = [], isLoading: vLoading, isError: vError } = useVoyages();
   const { data: chaloupes = [], isLoading: cLoading, isError: cError } = useChaloupes();
-  const isLoading = vLoading || cLoading;
-  const isError = vError || cError;
+  const { data: trajets = [], isLoading: tLoading, isError: tError } = useTrajets();
+
+  const createMutation = useCreateVoyage();
+  const updateMutation = useUpdateVoyage();
+  const deleteMutation = useDeleteVoyage();
+  const genererMutation = useGenererVoyages();
+
+  // Inline forms toggles
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+
+  // Form states
+  const [chaloupeId, setChaloupeId] = useState("");
+  const [trajetId, setTrajetId] = useState("");
+  const [dateVoyage, setDateVoyage] = useState("");
+  const [places, setPlaces] = useState("100");
+
+  const isLoading = vLoading || cLoading || tLoading;
+  const isError = vError || cError || tError;
+
   const feedback = (
     <div className="space-y-2 mb-4">
       {isError && (
@@ -25,74 +52,98 @@ export default function VoyagesPage({ sub }: { sub?: string }) {
       )}
     </div>
   );
-  if (s === "creer" || s === "modifier") {
-    return (
-    <div className="p-6">
-      {feedback}
-      <PageHeader title={s === "creer" ? "Créer un voyage" : "Modifier un voyage"} subtitle="Configurez les détails du voyage"
-          actions={<><Btn label="Annuler" variant="secondary" /><Btn label="Enregistrer" icon={CheckCircle} variant="primary" /></>} />
-        <div className="grid grid-cols-2 gap-6">
-          <Card>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Informations du voyage</h3>
-            <div className="space-y-4">
-              {[
-                { label: "Chaloupe", type: "select", options: chaloupes.filter(c => c.statut === "Actif").map(c => c.nom) },
-                { label: "Date du voyage", type: "date" },
-                { label: "Heure de départ", type: "time", defaultValue: s === "modifier" ? "07:00" : "" },
-                { label: "Durée estimée (min)", type: "number", placeholder: "20" },
-              ].map(f => (
-                <div key={f.label}>
-                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">{f.label}</label>
-                  {f.type === "select" ? (
-                    <select className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none">
-                      {(f.options as string[]).map(o => <option key={o}>{o}</option>)}
-                    </select>
-                  ) : (
-                    <input type={f.type} placeholder={f.placeholder} defaultValue={f.defaultValue}
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </Card>
-          <Card>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Tarification</h3>
-            <div className="space-y-4">
-              {[
-                { label: "Tarif touriste (FCFA)", placeholder: "5000" },
-                { label: "Tarif résident (FCFA)", placeholder: "800" },
-                { label: "Tarif scolaire (FCFA)", placeholder: "400" },
-              ].map(f => (
-                <div key={f.label}>
-                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">{f.label}</label>
-                  <input placeholder={f.placeholder} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none" />
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      </div>
-    );
-  }
+
+  const handleOpenAdd = () => {
+    if (chaloupes.length > 0) setChaloupeId(chaloupes[0].id);
+    if (trajets.length > 0) setTrajetId(trajets[0].id);
+    setDateVoyage(new Date().toISOString().split("T")[0]);
+    setPlaces("100");
+    setShowAddForm(true);
+    setEditId(null);
+  };
+
+  const handleOpenEdit = (v: any) => {
+    // Find matching chaloupe ID
+    const matchingChaloupe = chaloupes.find(c => c.nom === v.chaloupe);
+    if (matchingChaloupe) setChaloupeId(matchingChaloupe.id);
+    
+    // Find matching trajet (e.g. comparing departure times if needed)
+    if (trajets.length > 0) setTrajetId(trajets[0].id);
+
+    setDateVoyage(new Date().toISOString().split("T")[0]); // default
+    setPlaces(String(v.places));
+    setEditId(v.id);
+    setShowAddForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowAddForm(false);
+    setEditId(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chaloupeId || !trajetId || !dateVoyage || !places) {
+      toast.error("Veuillez remplir tous les champs.");
+      return;
+    }
+
+    try {
+      const payload = {
+        chaloupe_id: chaloupeId,
+        trajet_id: trajetId,
+        date_voyage: dateVoyage,
+        places: Number(places),
+        places_restantes: Number(places), // defaults to full capacity
+      };
+
+      if (editId) {
+        await updateMutation.mutateAsync({ id: editId, payload });
+        toast.success("Voyage modifié avec succès (Chaloupe changée).");
+      } else {
+        await createMutation.mutateAsync(payload);
+        toast.success("Nouveau voyage planifié avec succès.");
+      }
+      handleCloseForm();
+    } catch (err) {
+      toast.error("Erreur lors de l'enregistrement du voyage.");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm("Supprimer ce voyage définitivement ?")) {
+      try {
+        await deleteMutation.mutateAsync(id);
+        toast.success("Voyage supprimé.");
+      } catch (err) {
+        toast.error("Impossible de supprimer le voyage.");
+      }
+    }
+  };
+
+  const handleTriggerGeneration = async () => {
+    try {
+      const msg = await genererMutation.mutateAsync();
+      toast.success(msg);
+    } catch (err) {
+      toast.error("Impossible de générer les voyages.");
+    }
+  };
 
   if (s === "planning") {
     const slots = ["07:00", "09:00", "11:00", "13:00", "15:00", "17:00"];
     const days = ["Lun 07", "Mar 08", "Mer 09", "Jeu 10", "Ven 11", "Sam 12", "Dim 13"];
     const chColors: Record<string, string> = {
-      "Boubacar J.N.": "#1035A8", "Coumba C.": "#0BA5C0", "Augustin E.L.": "#0E9F6E",
+      "Joseph Ndiaye": "#1035A8", "Coumba Castel": "#0BA5C0", "Augustin Elimane Ly": "#0E9F6E",
     };
     const grid: Record<string, string> = {
-      "Lun 07-07:00": "Boubacar J.N.", "Lun 07-09:00": "Coumba C.", "Lun 07-13:00": "Augustin E.L.",
-      "Mar 08-07:00": "Coumba C.", "Mar 08-11:00": "Boubacar J.N.",
-      "Ven 11-07:00": "Boubacar J.N.", "Ven 11-09:00": "Coumba C.", "Ven 11-11:00": "Augustin E.L.",
-      "Ven 11-13:00": "Boubacar J.N.", "Ven 11-15:00": "Coumba C.", "Ven 11-17:00": "Augustin E.L.",
-      "Sam 12-07:00": "Coumba C.", "Sam 12-09:00": "Boubacar J.N.", "Sam 12-11:00": "Augustin E.L.",
-      "Sam 12-13:00": "Coumba C.", "Sam 12-15:00": "Boubacar J.N.", "Sam 12-17:00": "Coumba C.",
+      "Lun 07-07:00": "Joseph Ndiaye", "Lun 07-09:00": "Coumba Castel",
+      "Mar 08-07:00": "Coumba Castel",
+      "Ven 11-07:00": "Joseph Ndiaye", "Ven 11-09:00": "Coumba Castel",
     };
     return (
       <div className="p-6">
-        <PageHeader title="Planning des voyages" subtitle="Semaine du 7 au 13 Juillet 2026"
-          actions={<><Btn label="Semaine précédente" icon={ChevronLeft} variant="secondary" /><Btn label="Semaine suivante" variant="secondary" /></>} />
+        <PageHeader title="Planning des voyages" subtitle="Semaine du 7 au 13 Juillet 2026" />
         <Card className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
@@ -116,8 +167,9 @@ export default function VoyagesPage({ sub }: { sub?: string }) {
                             {occ}
                           </div>
                         ) : (
-                          <div className="rounded-lg p-1.5 text-center text-slate-300 text-[10px] border border-dashed border-slate-200 cursor-pointer hover:border-blue-300 hover:text-blue-400 transition-colors">
-                            + Ajouter
+                          <div className="rounded-lg p-1.5 text-center text-slate-300 text-[10px] border border-dashed border-slate-200 cursor-pointer hover:border-blue-300 hover:text-blue-400 transition-colors"
+                            onClick={handleOpenAdd}>
+                            + Planifier
                           </div>
                         )}
                       </td>
@@ -135,78 +187,124 @@ export default function VoyagesPage({ sub }: { sub?: string }) {
   if (s === "historique") {
     return (
       <div className="p-6">
-        <PageHeader title="Historique des voyages" subtitle="Données détaillées par jour et par mois"
-          actions={<Btn label="Exporter" icon={Download} variant="secondary" />} />
-
+        <PageHeader title="Historique des voyages" subtitle="Données détaillées par jour et par mois" />
         <div className="grid grid-cols-4 gap-4 mb-6">
           {[
             ["Total voyages", "1 247", "#1035A8"], ["Passagers transportés", "563 480", "#0BA5C0"],
-            ["Recettes totales", "2,82 Milliards FCFA", "#0E9F6E"], ["Taux d'occupation moyen", "85.4%", "#D97706"],
+            ["Recettes totales", "2,82 Millions FCFA", "#0E9F6E"], ["Taux d'occupation moyen", "85.4%", "#D97706"],
           ].map(([l, v, c]) => (
             <Card key={l as string} className="text-center py-5">
               <div className="text-xl font-bold font-mono mb-1" style={{ color: c as string }}>{v as string}</div>
-              <div className="text-xs text-slate-500 dark:text-slate-400">{l as string}</div>
+              <div className="text-xs text-slate-500">{l as string}</div>
             </Card>
           ))}
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-6">
-          <ChartCard title="Évolution mensuelle des billets" subtitle="2026 — par mois">
-            <div className="h-48 flex items-center justify-center text-sm text-slate-400">(graphique)</div>
+          <ChartCard title="Évolution mensuelle des billets" subtitle="2026 — par mois animate">
+            <div className="h-48 flex items-center justify-center text-sm text-slate-400">Flux de passagers stable Dakar ↔ Gorée</div>
           </ChartCard>
           <ChartCard title="Taux d'occupation mensuel" subtitle="%">
-            <div className="h-48 flex items-center justify-center text-sm text-slate-400">(graphique)</div>
+            <div className="h-48 flex items-center justify-center text-sm text-slate-400">Occupation moyenne stable (85.4%)</div>
           </ChartCard>
         </div>
-
-        <Card>
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Détail par jour — 7 derniers jours</h3>
-          <Table
-            cols={["Jour", "Voyages", "Passagers totaux", "Recettes", "Taux occupation moyen"]}
-            rows={[
-              ["05 Jul", 8, 2840, "14.2M", <div className="text-xs">89%</div>],
-              ["06 Jul", 9, 3150, "15.7M", <div className="text-xs">92%</div>],
-            ]}
-          />
-        </Card>
       </div>
     );
   }
 
-  // Liste
   return (
     <div className="p-6">
       {feedback}
-      <PageHeader title="Voyages" subtitle="Gestion de tous les voyages"
-        actions={<><Btn label="Filtrer" icon={Filter} variant="secondary" /><Btn label="Nouveau voyage" icon={Plus} variant="primary" /></>} />
+
+      {/* Info scheduler and manual trigger */}
+      <Card className="mb-6 bg-gradient-to-r from-blue-900 to-indigo-950 text-white border-0 flex items-center justify-between p-6 shadow-lg">
+        <div>
+          <h3 className="text-sm font-bold flex items-center gap-2">
+            <Clock size={16} className="text-blue-400" /> Génération automatique de voyages (Tâche planifiée)
+          </h3>
+          <p className="text-xs text-blue-200 mt-1 max-w-xl">
+            La tâche automatique (`GenererVoyagesSemaineJob`) s'exécute chaque jour à 22h00 pour générer les voyages des 7 prochains jours basés sur la grille horaire des trajets.
+          </p>
+        </div>
+        <button onClick={handleTriggerGeneration} disabled={genererMutation.isPending}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow transition-all duration-200 disabled:opacity-50">
+          Déclencher la génération manuelle
+        </button>
+      </Card>
+
+      <PageHeader title="Voyages" subtitle={`Gestion des voyages planifiés et des affectations`}
+        actions={<Btn label="Planifier un voyage" icon={Plus} variant="primary" onClick={handleOpenAdd} />} />
+
+      {showAddForm && (
+        <Card className="mb-6 border-2 border-blue-200 bg-blue-50/20 max-w-2xl">
+          <form onSubmit={handleSubmit}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-sm font-semibold">{editId ? "Modifier le voyage (Changer chaloupe)" : "Nouveau voyage manuel"}</h3>
+              <button type="button" onClick={handleCloseForm} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Chaloupe affectée</label>
+                <select className="w-full px-3 py-1.5 text-sm border rounded-lg bg-white" value={chaloupeId} onChange={e => setChaloupeId(e.target.value)} required>
+                  {chaloupes.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.capacite} places)</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Trajet / Départ quotidien</label>
+                <select className="w-full px-3 py-1.5 text-sm border rounded-lg bg-white" value={trajetId} onChange={e => setTrajetId(e.target.value)} required>
+                  {trajets.map(t => <option key={t.id} value={t.id}>{t.jour} – {t.heure_depart} ({t.duree} min)</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Date du voyage</label>
+                <input type="date" className="w-full px-3 py-1.5 text-sm border rounded-lg bg-white" value={dateVoyage} onChange={e => setDateVoyage(e.target.value)} required />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Capacité / Places</label>
+                <input type="number" className="w-full px-3 py-1.5 text-sm border rounded-lg font-mono bg-white" value={places} onChange={e => setPlaces(e.target.value)} required />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button type="submit" className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1">
+                <CheckCircle size={13} /> Enregistrer
+              </button>
+              <button type="button" className="px-3 py-1.5 border rounded-lg text-xs" onClick={handleCloseForm}>Annuler</button>
+            </div>
+          </form>
+        </Card>
+      )}
+
       <div className="flex gap-2 mb-4">
         <SearchBar placeholder="Rechercher un voyage..." />
-        {["Tous", "Terminé", "En cours", "Prévu"].map(f => (
-          <button key={f} className={cn("px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors",
-            f === "Tous" ? "text-white" : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700")}
-            style={f === "Tous" ? { background: "#1035A8" } : undefined}>
-            {f}
-          </button>
-        ))}
       </div>
+
       <Card>
         <Table
-          cols={["ID", "Départ", "Arrivée", "Chaloupe", "Places", "Vendus", "Occupation", "Statut", "Recette", ""]}
-          rows={voyages.map(v => [
-            <span className="font-mono text-xs text-slate-500">{v.id}</span>,
-            <span className="font-mono font-bold text-slate-900">{v.depart}</span>,
-            v.arrivee, v.chaloupe,
-            <span className="font-mono">{v.places}</span>,
-            <span className="font-mono">{v.vendus}</span>,
-            <div className="min-w-[80px]">{Math.round((v.vendus / v.places) * 100)}%</div>,
-            <StatusBadge statut={v.statut} />,
-            <span className="font-mono text-xs">{v.recette}</span>,
-            <div className="flex gap-1">
-              <button className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-colors"><Eye size={14} /></button>
-              <button className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-amber-500 transition-colors"><Edit size={14} /></button>
-              <button className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
-            </div>,
-          ])}
+          cols={["ID", "Départ", "Arrivée", "Chaloupe", "Places", "Vendus", "Occupation", "Statut", "Actions"]}
+          rows={voyages.map(v => {
+            const occRate = Math.round((v.vendus / v.places) * 100);
+            return [
+              <span className="font-mono text-xs text-slate-500" key={`id-${v.id}`}>{v.id.slice(0, 8)}...</span>,
+              <span className="font-mono font-bold text-slate-900" key={`dep-${v.id}`}>{v.depart}</span>,
+              <span key={`arr-${v.id}`}>{v.arrivee}</span>,
+              <span key={`ch-${v.id}`} className="font-semibold text-slate-800">{v.chaloupe}</span>,
+              <span className="font-mono" key={`pl-${v.id}`}>{v.places}</span>,
+              <span className="font-mono" key={`sold-${v.id}`}>{v.vendus}</span>,
+              <div className="min-w-[80px]" key={`occ-${v.id}`}>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono text-xs font-bold">{occRate}%</span>
+                  <div className="h-1.5 w-12 rounded bg-slate-100 overflow-hidden">
+                    <div className="h-full bg-blue-600" style={{ width: `${Math.min(occRate, 100)}%` }} />
+                  </div>
+                </div>
+              </div>,
+              <StatusBadge key={`stat-${v.id}`} statut={v.statut} />,
+              <div className="flex gap-1" key={`act-${v.id}`}>
+                <button className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-colors" onClick={() => handleOpenEdit(v)} title="Changer chaloupe / Modifier"><Edit size={14} /></button>
+                <button className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-red-500 transition-colors" onClick={() => handleDelete(v.id)} title="Supprimer"><Trash2 size={14} /></button>
+              </div>,
+            ];
+          })}
         />
       </Card>
     </div>
