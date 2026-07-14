@@ -1,10 +1,38 @@
 import { PageHeader, Btn, Card, ChartCard, Table } from "@/app/components/ui/Shared";
 import { C, StatusBadge } from "@/app/components/layout/common";
 import { Ticket, Banknote, Activity, Star, Download } from "lucide-react";
-import { monthlyData, pieData, paiementData, hourlyData, chaloupesData } from "@/app/data/mock/dashboard.mock";
+import { monthlyData as mockMonthlyData, pieData as mockPieData, paiementData as mockPaiementData, hourlyData as mockHourlyData, chaloupesData as mockChaloupesData } from "@/app/data/mock/dashboard.mock";
 import { ResponsiveContainer, AreaChart, Area, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, LineChart, Line, PieChart as RPieChart, Pie, Cell, Legend, Bar } from "recharts";
+import { useQuery } from "@tanstack/react-query";
+import { getDashboardMetrics } from "@/app/services/analyticsService";
 
 export default function StatsPage({ sub }: { sub: string }) {
+  const { data: metrics, isLoading, isError } = useQuery({
+    queryKey: ["dashboard", "analytics"],
+    queryFn: getDashboardMetrics,
+    staleTime: 60000,
+  });
+
+  const monthlyData = metrics?.monthly_data ?? mockMonthlyData;
+  const pieData = metrics?.visitor_categories ?? mockPieData;
+  const paiementData = metrics?.payment_methods ?? mockPaiementData;
+  const hourlyData = metrics?.hourly_boardings ?? mockHourlyData;
+  const chaloupesData = metrics?.chaloupes_occupations ?? mockChaloupesData;
+
+  const feedback = (
+    <div className="space-y-2 mb-4">
+      {isError && (
+        <div className="rounded-lg border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-4 py-2.5 text-sm text-amber-700 dark:text-amber-400">
+          Données indisponibles — affichage des dernières données connues.
+        </div>
+      )}
+      {isLoading && (
+        <div className="h-1 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+          <div className="h-full w-1/3 animate-pulse rounded-full bg-slate-400" />
+        </div>
+      )}
+    </div>
+  );
   if (sub === "billets" || sub === "recettes") {
     return (
       <div className="p-6">
@@ -48,6 +76,7 @@ export default function StatsPage({ sub }: { sub: string }) {
     const data = sub === "categories" ? pieData : paiementData;
     return (
       <div className="p-6">
+        {feedback}
         <PageHeader title={sub === "categories" ? "Catégories de voyageurs" : "Répartition des paiements"} subtitle="Par mois — cumulé 2026" />
         <div className="grid grid-cols-2 gap-6">
           <ChartCard title={sub === "categories" ? "Répartition par type" : "Modes de paiement"} subtitle="Ce mois">
@@ -84,6 +113,7 @@ export default function StatsPage({ sub }: { sub: string }) {
   if (sub === "heures") {
     return (
       <div className="p-6">
+        {feedback}
         <PageHeader title="Heures de pointe" subtitle="Distribution horaire mensuelle — moyenne par créneaux" />
         <ChartCard title="Passagers par créneau horaire" subtitle="Moyenne mensuelle 2026">
           <ResponsiveContainer width="100%" height={280}>
@@ -115,6 +145,7 @@ export default function StatsPage({ sub }: { sub: string }) {
   if (sub === "occupation") {
     return (
       <div className="p-6">
+        {feedback}
         <PageHeader title="Taux d'occupation" subtitle="Analyse mensuelle par chaloupe" />
         <div className="grid grid-cols-2 gap-6">
           <ChartCard title="Occupation par chaloupe — Ce mois">
@@ -151,6 +182,7 @@ export default function StatsPage({ sub }: { sub: string }) {
   if (sub === "validation") {
     return (
       <div className="p-6">
+        {feedback}
         <PageHeader title="Taux de validation QR" subtitle="Analyse mensuelle par mois" />
         <div className="grid grid-cols-4 gap-4 mb-6">
           {[ ["QR scannés (mois)", "18 432", C.ocean], ["Valides", "17 901", C.green], ["Invalides", "312", C.red], ["Taux global", "97.1%", C.teal] ].map(([l, v, c]) => (
@@ -180,21 +212,29 @@ export default function StatsPage({ sub }: { sub: string }) {
     );
   }
 
+  const currentMonthData = monthlyData.find((d: any) => d.month === "Jul") || { billets: 12280, recettes: 61400000, occupation: 94 };
+  const billetsCeMois = currentMonthData.billets.toLocaleString("fr-FR");
+  const recettesCeMois = currentMonthData.recettes >= 1000000 
+    ? `${(currentMonthData.recettes / 1000000).toFixed(1)}M FCFA`
+    : `${currentMonthData.recettes.toLocaleString("fr-FR")} FCFA`;
+  const occupationMoyenne = `${currentMonthData.occupation}%`;
+
   return (
     <div className="p-6">
+      {feedback}
       <PageHeader title="Statistiques — Vue d'ensemble" subtitle="Tableau analytique mensuel 2026"
         actions={<Btn label="Exporter rapport" icon={Download} variant="secondary" />} />
       <div className="grid grid-cols-4 gap-4 mb-6">
         <Card className="text-center py-4">
-          <div className="text-xl font-bold font-mono" style={{ color: C.ocean }}>12 280</div>
+          <div className="text-xl font-bold font-mono" style={{ color: C.ocean }}>{billetsCeMois}</div>
           <div className="text-xs text-slate-500 mt-0.5">Billets ce mois</div>
         </Card>
         <Card className="text-center py-4">
-          <div className="text-xl font-bold font-mono" style={{ color: C.teal }}>61,4M FCFA</div>
+          <div className="text-xl font-bold font-mono" style={{ color: C.teal }}>{recettesCeMois}</div>
           <div className="text-xs text-slate-500 mt-0.5">Recettes (mois)</div>
         </Card>
         <Card className="text-center py-4">
-          <div className="text-xl font-bold font-mono" style={{ color: C.green }}>94%</div>
+          <div className="text-xl font-bold font-mono" style={{ color: C.green }}>{occupationMoyenne}</div>
           <div className="text-xs text-slate-500 mt-0.5">Taux occupation</div>
         </Card>
         <Card className="text-center py-4">

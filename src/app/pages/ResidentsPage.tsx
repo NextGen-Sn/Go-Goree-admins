@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { PageHeader, Btn, Card, Table } from "@/app/components/ui/Shared";
 import { C, Badge, StatusBadge } from "@/app/components/layout/common";
-import { ChevronLeft, FileSearch, Eye, CheckCircle, XCircle, Calendar, MapPin } from "lucide-react";
+import { ChevronLeft, FileSearch, Eye, CheckCircle, XCircle, Calendar, MapPin, Download } from "lucide-react";
 import { useDemandesResidents } from "@/app/hooks/useResidents";
 
 function ResidentsListePage() {
