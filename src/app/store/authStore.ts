@@ -2,8 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { setTokenGetter, setUnauthorizedHandler } from "../api/laravelClient";
 
-// TODO: Rebrancher l'appel réel quand le backend Laravel /auth/login sera disponible.
-// import { laravelClient } from "../api/laravelClient";
+import { laravelClient } from "../api/laravelClient";
 
 export interface AuthUser {
   id?: string;
@@ -26,15 +25,25 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       user: null,
       isLoggedIn: false,
-      // DEMO MODE — l'appel API Laravel est désactivé, connexion mock locale.
-      // À remplacer par : await laravelClient.post("/auth/login", { email, password })
       login: async (email, password) => {
         if (!email || !password) throw new Error("Champs manquants");
-        // Simuler un léger délai réseau pour un rendu réaliste
-        await new Promise((r) => setTimeout(r, 600));
+        
+        const response = await laravelClient.post("/v1/login", {
+          email: email,
+          mot_de_passe: password,
+        });
+        
+        const { access_token, user } = response.data;
+        const normalizedRole = user.role?.nom === "Admin" ? "admin" : "agent";
+        
         set({
-          token: "demo-mock-token",
-          user: { id: "demo-1", nom: "Admin Démo", email, role: "admin" },
+          token: access_token,
+          user: {
+            id: user.id,
+            nom: `${user.prenom} ${user.nom}`,
+            email: user.email,
+            role: normalizedRole,
+          },
           isLoggedIn: true,
         });
       },

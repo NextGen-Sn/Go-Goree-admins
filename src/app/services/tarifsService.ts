@@ -1,10 +1,25 @@
-// TODO: Rebrancher quand le backend Laravel sera disponible.
-// import { laravelClient } from "../api/laravelClient";
+import { laravelClient } from "../api/laravelClient";
 import type { TarifCategorie } from "../types/tarifs";
-import { tarifsCategories } from "../data/mock/dashboard.mock";
+
+function mapTarifCategorie(backendTarif: any): TarifCategorie {
+  let catLabel = backendTarif.categorie;
+  if (backendTarif.categorie === "ETRANGER") catLabel = "Touriste";
+  else if (backendTarif.categorie === "RESIDENT") catLabel = "Résident";
+  else if (backendTarif.categorie === "ENFANT") catLabel = "Scolaire / Enfant";
+  else if (backendTarif.categorie === "ADULTE") catLabel = "Adulte";
+
+  return {
+    id: backendTarif.id,
+    categorie: catLabel,
+    prix: `${Number(backendTarif.prix).toLocaleString("fr-FR")} FCFA`,
+    validite: "Aller-retour",
+  };
+}
 
 export async function listCategoriesTarifs(): Promise<TarifCategorie[]> {
-  return tarifsCategories as TarifCategorie[];
+  const response = await laravelClient.get("/v1/tarifs");
+  const items = Array.isArray(response.data) ? response.data : (response.data.data || []);
+  return items.map(mapTarifCategorie);
 }
 
 export async function listHorairesTarifs(): Promise<unknown[]> {
@@ -17,5 +32,14 @@ export async function listHorairesTarifs(): Promise<unknown[]> {
 }
 
 export async function updateGrilleTarifs(payload: TarifCategorie[]): Promise<TarifCategorie[]> {
-  return payload;
+  for (const item of payload) {
+    // Strip " FCFA" and formatting to convert back to float
+    const numericPrix = Number(String(item.prix).replace(/[^0-9.-]+/g, ""));
+    if (!isNaN(numericPrix)) {
+      await laravelClient.put(`/v1/tarifs/${item.id}`, {
+        prix: numericPrix,
+      });
+    }
+  }
+  return listCategoriesTarifs();
 }
