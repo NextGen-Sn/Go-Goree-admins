@@ -40,8 +40,18 @@ export default function StatsPage({ sub }: { sub: string }) {
           actions={<Btn label="Exporter" icon={Download} variant="secondary" />} />
         <div className="grid grid-cols-4 gap-4 mb-6">
           {(sub === "billets"
-            ? [["Total billets (ytd)", "62 680", C.ocean], ["Mois record", "Jul: 12 280", C.teal], ["Moyenne/mois", "8 954", C.green], ["Tendance", "+59.9%", C.amber]]
-            : [["Recettes totales (ytd)", "313,4M FCFA", C.ocean], ["Mois record", "Jul: 61,4M", C.teal], ["Moyenne/mois", "44,8M FCFA", C.green], ["Croissance", "+59.9%", C.green]]
+            ? [
+                ["Total billets (ytd)", metrics?.overview?.total_tickets_ytd?.toLocaleString("fr-FR") ?? "62 680", C.ocean], 
+                ["Mois record", metrics?.overview?.record_month ? metrics.overview.record_month.split(":")[0] : "Jul", C.teal], 
+                ["Moyenne/mois", Math.round(metrics?.overview?.average_tickets_per_month ?? 8954).toLocaleString("fr-FR"), C.green], 
+                ["Tendance", metrics?.overview?.tendance_percentage ?? "+59.9%", C.amber]
+              ]
+            : [
+                ["Recettes totales (ytd)", metrics?.overview?.total_sales_ytd ? `${(metrics.overview.total_sales_ytd / 1000000).toFixed(1)}M FCFA` : "313,4M FCFA", C.ocean], 
+                ["Mois record", metrics?.overview?.record_month ? metrics.overview.record_month.split("FCFA")[0] : "Jul: 61,4M", C.teal], 
+                ["Moyenne/mois", metrics?.overview?.average_sales_per_month ? `${(metrics.overview.average_sales_per_month / 1000000).toFixed(1)}M FCFA` : "44,8M FCFA", C.green], 
+                ["Croissance", metrics?.overview?.tendance_percentage ?? "+59.9%", C.green]
+              ]
           ).map(([l, v, c]) => (
             <Card key={l as string} className="text-center py-4">
               <div className="text-xl font-bold font-mono" style={{ color: c as string }}>{v as string}</div>

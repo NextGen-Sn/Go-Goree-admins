@@ -7,7 +7,7 @@ import { motion } from "motion/react";
 import { useDashboard } from "@/app/hooks/dashboard/useDashboard";
 
 export default function DashboardPage() {
-  const { ticketData, monthlyData, pieData, voyages, transactions, isLoading, isError } = useDashboard();
+  const { ticketData, monthlyData, pieData, voyages, transactions, overview = {}, isLoading, isError } = useDashboard();
 
   return (
     <div className="p-6 space-y-6">
@@ -25,23 +25,71 @@ export default function DashboardPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Bonjour, Administrateur</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Vendredi 11 Juillet 2026 — Dakar ↔ Île de Gorée</p>
+          <p className="text-sm text-slate-500 mt-0.5">Dakar ↔ Île de Gorée</p>
         </div>
         <div className="flex gap-2">
-          <Btn label="Actualiser" icon={RefreshCw} variant="secondary" />
-          <Btn label="Rapport du jour" icon={FileText} variant="primary" />
+          <Btn label="Actualiser" icon={RefreshCw} variant="secondary" onClick={() => window.location.reload()} />
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard title="Billets vendus" value="834" sub="aujourd'hui" icon={Ticket} trend={{ val: "+12%", up: true }} color={C.ocean} />
-        <KPICard title="Recettes du jour" value="4,17M FCFA" sub="en cours" icon={Banknote} trend={{ val: "+8%", up: true }} color={C.teal} />
-        <KPICard title="Voyages effectués" value="4 / 6" sub="ce jour" icon={Ship} color={C.green} />
-        <KPICard title="Passagers embarqués" value="1 278" sub="aujourd'hui" icon={Users} trend={{ val: "+5%", up: true }} color={C.amber} />
-        <KPICard title="QR validés" value="1 243" sub="sur 1 278 embarqués" icon={Scan} trend={{ val: "97.3%", up: true }} color={C.purple} />
-        <KPICard title="Solde Wallet" value="2,84M FCFA" sub="total passagers" icon={WalletIcon} trend={{ val: "+320K", up: true }} color={C.ocean} />
-        <KPICard title="Demandes résidents" value="8" sub="en attente" icon={FileCheck} color={C.amber} />
-        <KPICard title="Taux d'occupation" value="88%" sub="moyenne du jour" icon={BarChart3} trend={{ val: "+3%", up: true }} color={C.teal} />
+        <KPICard
+          title="Billets vendus"
+          value={Number(overview.billets_vendus_aujourdhui ?? 0).toLocaleString("fr-FR")}
+          sub="aujourd'hui"
+          icon={Ticket}
+          color={C.ocean}
+        />
+        <KPICard
+          title="Recettes du jour"
+          value={`${Number(overview.recettes_aujourdhui ?? 0).toLocaleString("fr-FR")} FCFA`}
+          sub="en cours"
+          icon={Banknote}
+          color={C.teal}
+        />
+        <KPICard
+          title="Voyages effectués"
+          value={`${Number(overview.voyages_effectues_aujourdhui ?? 0)} / ${Number(overview.voyages_total_aujourdhui ?? 0)}`}
+          sub="ce jour"
+          icon={Ship}
+          color={C.green}
+        />
+        <KPICard
+          title="Passagers embarqués"
+          value={Number(overview.passagers_embarques_aujourdhui ?? 0).toLocaleString("fr-FR")}
+          sub="aujourd'hui"
+          icon={Users}
+          color={C.amber}
+        />
+        <KPICard
+          title="QR validés"
+          value={Number(overview.qr_valides_aujourdhui ?? 0).toLocaleString("fr-FR")}
+          sub={`sur ${Number(overview.passagers_embarques_aujourdhui ?? 0)} embarqués`}
+          icon={Scan}
+          trend={overview.passagers_embarques_aujourdhui ? { val: `${((Number(overview.qr_valides_aujourdhui ?? 0) / overview.passagers_embarques_aujourdhui) * 100).toFixed(1)}%`, up: true } : undefined}
+          color={C.purple}
+        />
+        <KPICard
+          title="Solde Wallet"
+          value={`${Number(overview.solde_global_wallet ?? 0).toLocaleString("fr-FR")} FCFA`}
+          sub="total passagers"
+          icon={WalletIcon}
+          color={C.ocean}
+        />
+        <KPICard
+          title="Demandes résidents"
+          value={Number(overview.demandes_en_attente ?? 0).toString()}
+          sub="en attente"
+          icon={FileCheck}
+          color={C.amber}
+        />
+        <KPICard
+          title="Taux d'occupation"
+          value={`${Number(overview.avg_occupation_aujourdhui ?? 0)}%`}
+          sub="moyenne du jour"
+          icon={BarChart3}
+          color={C.teal}
+        />
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -75,7 +123,7 @@ export default function DashboardPage() {
 
       <Card>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-slate-900">Voyages du jour — 11 Juillet 2026</h3>
+          <h3 className="text-sm font-semibold text-slate-900">Voyages du jour — {new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</h3>
         </div>
         <Table
           cols={["ID", "Départ", "Arrivée", "Chaloupe", "Places", "Vendus", "Occupation", "Statut", "Recette"]}

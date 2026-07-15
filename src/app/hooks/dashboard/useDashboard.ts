@@ -16,6 +16,7 @@ export interface DashboardData {
   pieData: any;
   voyages: any;
   transactions: any;
+  overview?: any;
 }
 
 export function useDashboard() {
@@ -55,6 +56,7 @@ export function useDashboard() {
     pieData: metrics.visitor_categories ?? mockPieData,
     voyages: voyagesQ.data ?? mockVoyages,
     transactions: (transactionsQ.data ?? mockTransactions).slice(0, 10), // only recent transactions on dashboard
+    overview: metrics.overview || {},
   };
 
   return { ...data, isLoading, isError };
