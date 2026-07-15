@@ -92,9 +92,6 @@ export default function AppRoutes({ darkMode, onDark }: { darkMode: boolean; onD
 
         {/* Rapports */}
         <Route path="/rapports" element={<RapportsPage sub="generer" />} />
-        <Route path="/rapports/pdf" element={<RapportsPage sub="pdf" />} />
-        <Route path="/rapports/excel" element={<RapportsPage sub="excel" />} />
-        <Route path="/rapports/csv" element={<RapportsPage sub="csv" />} />
         <Route path="/rapports/historique" element={<RapportsPage sub="historique" />} />
 
         {/* Paramètres */}
