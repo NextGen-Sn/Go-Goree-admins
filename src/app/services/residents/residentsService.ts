@@ -1,5 +1,21 @@
 import { laravelClient } from "../../api/laravelClient";
-import type { DemandeResident } from "../../types/residents";
+import type { DemandeResident, ResidentDocument } from "../../types/residents";
+
+// Base storage : dérivée de VITE_API_LARAVEL_URL (on retire le suffixe /api) — pas d'URL en dur.
+const API_BASE = import.meta.env.VITE_API_LARAVEL_URL ?? "http://localhost:8000/api";
+const STORAGE_BASE = `${API_BASE.replace(/\/api\/?$/, "")}/storage`;
+
+function buildDocuments(backendItem: any): ResidentDocument[] {
+  const fields: [string, string | null | undefined][] = [
+    ["Photo", backendItem.photo],
+    ["CNI recto", backendItem.cni_recto],
+    ["CNI verso", backendItem.cni_verso],
+    ["Certificat de résidence", backendItem.certificat_residence],
+  ];
+  return fields
+    .filter(([, path]) => Boolean(path))
+    .map(([name, path]) => ({ name, url: `${STORAGE_BASE}/${path}` }));
+}
 
 function mapDemandeResident(backendItem: any): DemandeResident {
   let mappedStatut = "En attente";
@@ -20,9 +36,11 @@ function mapDemandeResident(backendItem: any): DemandeResident {
       year: "numeric"
     }) : "—",
     docs: backendItem.docs || [],
+    documents: buildDocuments(backendItem),
     statut: mappedStatut,
     cin: backendItem.carte_identite || "—",
     adresse: backendItem.residence || "—",
+    motif_refus: backendItem.motif_refus ?? null,
   };
 }
 

@@ -80,19 +80,21 @@ function ResidentsListePage() {
             <Card>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Documents soumis</h3>
               <div className="grid grid-cols-3 gap-4">
-                {dem.docs && dem.docs.map(doc => (
-                  <div key={doc} className="text-center">
+                {dem.documents && dem.documents.length > 0 ? dem.documents.map(doc => (
+                  <div key={doc.name} className="text-center">
                     <div className="h-36 rounded-xl bg-slate-100 dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 flex flex-col items-center justify-center mb-2 hover:bg-slate-50 dark:hover:bg-slate-600 cursor-pointer transition-colors">
                       <FileSearch size={28} className="text-slate-300 mb-2" />
                       <span className="text-xs font-semibold text-slate-500">Aperçu</span>
                     </div>
-                    <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 overflow-hidden text-ellipsis whitespace-nowrap px-1" title={doc}>{doc}</div>
-                    <a href={`http://localhost:8000/storage/${doc}`} target="_blank" rel="noreferrer"
+                    <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 overflow-hidden text-ellipsis whitespace-nowrap px-1" title={doc.name}>{doc.name}</div>
+                    <a href={doc.url} target="_blank" rel="noreferrer"
                        className="mt-1 text-xs font-medium flex items-center gap-1 justify-center hover:underline" style={{ color: C.ocean }}>
                       <Eye size={11} /> Télécharger / Visualiser
                     </a>
                   </div>
-                ))}
+                )) : (
+                  <div className="col-span-3 text-xs text-slate-400 py-6 text-center">Aucune pièce jointe.</div>
+                )}
               </div>
             </Card>
             <Card>
