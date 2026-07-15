@@ -115,21 +115,21 @@ export default function WalletPage({ sub }: { sub: string }) {
       <PageHeader title="Wallet — Solde global" subtitle="Vue d'ensemble du portefeuille électronique" />
       <div className="grid grid-cols-3 gap-4 mb-6">
         <Card className="col-span-1 py-6 text-white shadow-lg" style={{ background: "linear-gradient(135deg, #1A56DB, #0BA5C0)" }}>
-          <div className="text-xs font-semibold opacity-80 mb-1">Volume global des recharges</div>
+          <div className="text-xs font-semibold opacity-80 mb-1">Solde global des wallets</div>
           <div className="text-3xl font-bold font-mono">{walletInfo?.soldeGlobal || "0 FCFA"}</div>
           <div className="mt-4 flex items-center gap-1 text-xs opacity-70"><ArrowUpRight size={12} /><span>Temps réel synchronisé</span></div>
         </Card>
-        <Card className="text-center py-6"><div className="text-2xl font-bold font-mono mb-1" style={{ color: C.teal }}>{passagers.length}</div><div className="text-xs text-slate-500">Wallets clients actifs</div></Card>
-        <Card className="text-center py-6"><div className="text-xl font-bold font-mono mb-1" style={{ color: C.ocean }}>{walletInfo?.soldeVirtuel || "0 FCFA"}</div><div className="text-xs text-slate-500">Recharges virtuelles totales</div></Card>
+        <Card className="text-center py-6"><div className="text-2xl font-bold font-mono mb-1" style={{ color: C.teal }}>{walletInfo?.walletsActifs ?? passagers.length}</div><div className="text-xs text-slate-500">Wallets clients actifs</div></Card>
+        <Card className="text-center py-6"><div className="text-xl font-bold font-mono mb-1" style={{ color: C.ocean }}>{mouvements.filter(m => m.type === "credit").length}</div><div className="text-xs text-slate-500">Rechargements enregistrés</div></Card>
       </div>
       <Card>
         <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Top wallets par solde</h3>
         <Table
           cols={["Rang", "Passager", "Type", "Solde", "Statut"]}
-          rows={passagers.map((p, i) => [
+          rows={[...passagers].sort((a, b) => b.soldeValue - a.soldeValue).map((p, i) => [
             <span className="font-mono font-bold text-slate-300" key={`rank-${i}`}>#{i + 1}</span>,
             <span key={`name-${i}`}>{p.nom}</span>,
-            <Badge key={`badge-${i}`} label={p.statut} color={p.statut === "Touriste" ? "blue" : "teal"} />,
+            <Badge key={`badge-${i}`} label={p.statut} color={p.statut === "Résident" ? "teal" : "blue"} />,
             <span className="font-mono font-semibold text-slate-900 dark:text-slate-100" key={`solde-${i}`}>{p.solde}</span>,
             <Badge key={`state-${i}`} label="Actif" color="green" />,
           ])}
