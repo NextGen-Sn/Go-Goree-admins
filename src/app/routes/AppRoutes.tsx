@@ -43,6 +43,8 @@ export default function AppRoutes({ darkMode, onDark }: { darkMode: boolean; onD
         {/* Billets */}
         <Route path="/billets" element={<BilletsPage sub="liste" />} />
 
+        {/* Passagers */}
+        <Route path="/passagers" element={<PassagersPage />} />
 
         {/* Contrôleurs */}
         <Route path="/controleurs" element={<CtrlPage sub="liste" />} />

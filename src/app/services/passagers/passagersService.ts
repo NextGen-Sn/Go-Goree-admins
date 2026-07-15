@@ -3,18 +3,17 @@ import type { Passager } from "../../types/passagers";
 
 function mapPassager(backendUser: any): Passager {
   const isResident = backendUser.est_resident || backendUser.role?.nom === "Resident" || false;
-  const soldeWallet = backendUser.portefeuille?.solde 
-    ? `${Number(backendUser.portefeuille.solde).toLocaleString("fr-FR")} FCFA`
-    : "0 FCFA";
+  const soldeValue = Number(backendUser.portefeuille?.solde ?? 0);
 
   return {
     id: backendUser.id,
-    nom: `${backendUser.prenom} ${backendUser.nom}`,
+    nom: `${backendUser.prenom} ${backendUser.nom}`.trim(),
     email: backendUser.email || "—",
     telephone: backendUser.telephone || "—",
     statut: isResident ? "Résident" : "Touriste",
-    traversées: 12,
-    solde: soldeWallet,
+    traversees: backendUser.traversees_count || 0,
+    solde: `${soldeValue.toLocaleString("fr-FR")} FCFA`,
+    soldeValue,
   };
 }
 
