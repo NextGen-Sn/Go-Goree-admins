@@ -5,15 +5,16 @@ function mapNotification(backendItem: any): NotificationItem {
   return {
     id: backendItem.id,
     canal: backendItem.canal || "IN_APP",
-    destinataires: "Tous les passagers",
-    message: backendItem.message,
-    statut: "Envoyé",
-    date: backendItem.created_at ? new Date(backendItem.created_at).toLocaleDateString("fr-FR", {
-      day: "2-digit",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    }) : "—",
+    type: backendItem.type || "—",
+    lu: Boolean(backendItem.lu_a),
+    date: backendItem.created_at
+      ? new Date(backendItem.created_at).toLocaleDateString("fr-FR", {
+          day: "2-digit",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "—",
   };
 }
 
@@ -23,10 +24,30 @@ export async function listNotifications(): Promise<NotificationItem[]> {
   return items.map(mapNotification);
 }
 
-export async function broadcastNotification(payload: { canal: string; message: string }): Promise<any> {
+/** Clé de canal côté UI → valeur attendue par POST /broadcast (in:SMS,Email,Push,In-App) */
+const CANAL_UI_TO_BACKEND: Record<string, string> = {
+  IN_APP: "In-App",
+  EMAIL: "Email",
+  MAIL: "Email",
+  SMS: "SMS",
+  PUSH: "Push",
+};
+
+export interface BroadcastPayload {
+  titre: string;
+  message: string;
+  /** clé UI : IN_APP | EMAIL | SMS | PUSH */
+  canal: string;
+  /** "Tous les passagers" | "Résidents uniquement" | "Touristes uniquement" | "Scolaires uniquement" */
+  destinataires: string;
+}
+
+export async function broadcastNotification(payload: BroadcastPayload): Promise<any> {
   const response = await laravelClient.post("/v1/notifications/broadcast", {
-    canal: payload.canal,
+    titre: payload.titre,
     message: payload.message,
+    canaux: [CANAL_UI_TO_BACKEND[payload.canal] ?? payload.canal],
+    destinataires: payload.destinataires,
   });
   return response.data;
 }

@@ -1,12 +1,17 @@
-export type NotificationCanal = "SMS" | "Email" | "Push" | "In-App";
-export type NotificationStatut = "Envoyé" | "Échoué" | "En attente" | "Brouillon";
+/** Canaux tels que stockés en base (CanalEnum backend) */
+export type NotificationCanal = "SMS" | "IN_APP" | "MAIL";
+/** Types tels que stockés en base (NotificationEnum backend) */
+export type NotificationType = "PAYEMENT" | "ALERTE";
 
-export interface Notification {
+/**
+ * Forme réellement renvoyée par GET /v1/notifications.
+ * La table `notifications` ne stocke PAS de titre / message / destinataires :
+ * on n'expose donc que les colonnes réelles (type, canal, statut lu/non lu, date).
+ */
+export interface NotificationItem {
   id: string;
-  titre: string;
-  message: string;
-  canal: NotificationCanal;
-  destinataires: number;
-  statut: NotificationStatut;
-  dateEnvoi?: string;
+  canal: NotificationCanal | string;
+  type: NotificationType | string;
+  lu: boolean;
+  date: string;
 }
