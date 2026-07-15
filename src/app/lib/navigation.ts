@@ -65,10 +65,7 @@ export const NAV: NavItem[] = [
   ]},
   { id: "rapports", label: "Rapports", icon: undefined, children: [
     { label: "Générer un rapport", page: "rapp-generer" },
-    { label: "Rapports PDF", page: "rapp-pdf" },
-    { label: "Rapports Excel", page: "rapp-excel" },
-    { label: "Rapports CSV", page: "rapp-csv" },
-    { label: "Historique", page: "rapp-historique" },
+    { label: "Historique des rapports", page: "rapp-historique" },
   ]},
   { id: "params", label: "Paramètres", icon: undefined, children: [
     { label: "Général", page: "params-general" },
