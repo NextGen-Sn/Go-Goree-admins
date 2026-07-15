@@ -49,9 +49,7 @@ export default function AppRoutes({ darkMode, onDark }: { darkMode: boolean; onD
         <Route path="/controleurs/planning" element={<CtrlPage sub="planning" />} />
 
         {/* Chaloupes */}
-        <Route path="/chaloupes" element={<ChaloupesPage sub="liste" />} />
-        <Route path="/chaloupes/maintenance" element={<ChaloupesPage sub="maintenance" />} />
-        <Route path="/chaloupes/planning" element={<ChaloupesPage sub="planning" />} />
+        <Route path="/chaloupes" element={<ChaloupesPage />} />
 
         {/* Tarifs */}
         <Route path="/tarifs" element={<TarifsPage sub="grille" />} />

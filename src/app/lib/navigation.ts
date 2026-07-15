@@ -23,8 +23,6 @@ export const NAV: NavItem[] = [
   ]},
   { id: "chaloupes", label: "Chaloupes", icon: undefined, children: [
     { label: "Flotte", page: "chaloupes-liste" },
-    { label: "Maintenance", page: "chaloupes-maintenance" },
-    { label: "Planning déploiement", page: "chaloupes-planning" },
   ]},
   { id: "tarifs", label: "Tarifs", icon: undefined, children: [
     { label: "Grille tarifaire", page: "tarifs-grille" },
