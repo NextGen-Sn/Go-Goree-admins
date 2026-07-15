@@ -10,6 +10,8 @@ function mapControleur(backendUser: any): Controleur {
     shift: "Matin", // Default shift info
     chaloupe: "Beer", // Default chaloupe info
     statut: backendUser.active ? "Actif" : "Inactif",
+    invitePending: backendUser.invite_pending,
+    passwordResetAt: backendUser.password_reset_at,
   };
 }
 
@@ -52,7 +54,7 @@ export async function updateControleur(id: string, payload: Partial<Controleur>)
     backendPayload.nom = parts.slice(1).join(" ") || "—";
   }
   if (payload.email) backendPayload.email = payload.email;
-  if (payload.tel) backendPayload.telephone = payload.tel;
+  if (payload.tel !== undefined) backendPayload.telephone = payload.tel;
   if (payload.statut) backendPayload.active = payload.statut === "Actif";
 
   await laravelClient.put(`/v1/users/${id}`, backendPayload);
@@ -60,4 +62,9 @@ export async function updateControleur(id: string, payload: Partial<Controleur>)
 
 export async function deleteControleur(id: string): Promise<void> {
   await laravelClient.delete(`/v1/users/${id}`);
+}
+
+export async function resendControleurInvitation(id: string): Promise<any> {
+  const response = await laravelClient.post(`/v1/controleurs/${id}/renvoyer-invitation`);
+  return response.data;
 }

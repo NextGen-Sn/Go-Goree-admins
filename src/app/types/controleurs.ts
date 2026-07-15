@@ -6,4 +6,6 @@ export interface Controleur {
   shift: string;
   chaloupe: string;
   statut: string;
+  invitePending?: boolean;
+  passwordResetAt?: string | null;
 }
