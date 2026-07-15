@@ -63,14 +63,17 @@ export default function VoyagesPage({ sub }: { sub?: string }) {
   };
 
   const handleOpenEdit = (v: any) => {
-    // Find matching chaloupe ID
     const matchingChaloupe = chaloupes.find(c => c.nom === v.chaloupe);
     if (matchingChaloupe) setChaloupeId(matchingChaloupe.id);
     
-    // Find matching trajet (e.g. comparing departure times if needed)
-    if (trajets.length > 0) setTrajetId(trajets[0].id);
+    const matchingTrajet = trajets.find(t => t.heure_depart?.startsWith(v.heure_depart));
+    if (matchingTrajet) {
+      setTrajetId(matchingTrajet.id);
+    } else if (trajets.length > 0) {
+      setTrajetId(trajets[0].id);
+    }
 
-    setDateVoyage(new Date().toISOString().split("T")[0]); // default
+    setDateVoyage(v.date_voyage || new Date().toISOString().split("T")[0]);
     setPlaces(String(v.places));
     setEditId(v.id);
     setShowAddForm(true);
@@ -94,12 +97,12 @@ export default function VoyagesPage({ sub }: { sub?: string }) {
         trajet_id: trajetId,
         date_voyage: dateVoyage,
         places: Number(places),
-        places_restantes: Number(places), // defaults to full capacity
+        places_restantes: Number(places),
       };
 
       if (editId) {
         await updateMutation.mutateAsync({ id: editId, payload });
-        toast.success("Voyage modifié avec succès (Chaloupe changée).");
+        toast.success("Voyage modifié avec succès.");
       } else {
         await createMutation.mutateAsync(payload);
         toast.success("Nouveau voyage planifié avec succès.");
@@ -130,45 +133,87 @@ export default function VoyagesPage({ sub }: { sub?: string }) {
     }
   };
 
+  const handlePlanForSlot = (date: string, slot: string) => {
+    if (chaloupes.length > 0) setChaloupeId(chaloupes[0].id);
+
+    const dayNameMap: Record<number, string> = {
+      0: "DIMANCHE", 1: "LUNDI", 2: "MARDI", 3: "MERCREDI", 4: "JEUDI", 5: "VENDREDI", 6: "SAMEDI"
+    };
+    const dateObj = new Date(date);
+    const dayOfWeekStr = dayNameMap[dateObj.getDay()];
+
+    const matchingTrajet = trajets.find(t => t.jour === dayOfWeekStr && t.heure_depart?.startsWith(slot));
+    if (matchingTrajet) {
+      setTrajetId(matchingTrajet.id);
+    } else if (trajets.length > 0) {
+      setTrajetId(trajets[0].id);
+    }
+
+    setDateVoyage(date);
+    setPlaces("100");
+    setEditId(null);
+    setShowAddForm(true);
+  };
+
   if (s === "planning") {
     const slots = ["07:00", "09:00", "11:00", "13:00", "15:00", "17:00"];
-    const days = ["Lun 07", "Mar 08", "Mer 09", "Jeu 10", "Ven 11", "Sam 12", "Dim 13"];
+
+    // Generate dates for current week starting from Monday
+    const todayObj = new Date();
+    const currentDay = todayObj.getDay();
+    const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+    const mondayObj = new Date(todayObj);
+    mondayObj.setDate(todayObj.getDate() + distanceToMonday);
+
+    const weekDays = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(mondayObj);
+      d.setDate(mondayObj.getDate() + i);
+      const label = d.toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "short" });
+      const dateStr = d.toISOString().split("T")[0];
+      return { label, dateStr };
+    });
+
     const chColors: Record<string, string> = {
-      "Joseph Ndiaye": "#1035A8", "Coumba Castel": "#0BA5C0", "Augustin Elimane Ly": "#0E9F6E",
+      "Joseph Ndiaye": "#1035A8", "Boubacar Joseph Ndiaye": "#1035A8", "Coumba Castel": "#0BA5C0", "Augustin Elimane Ly": "#0E9F6E",
     };
-    const grid: Record<string, string> = {
-      "Lun 07-07:00": "Joseph Ndiaye", "Lun 07-09:00": "Coumba Castel",
-      "Mar 08-07:00": "Coumba Castel",
-      "Ven 11-07:00": "Joseph Ndiaye", "Ven 11-09:00": "Coumba Castel",
-    };
+
     return (
       <div className="p-6">
-        <PageHeader title="Planning des voyages" subtitle="Semaine du 7 au 13 Juillet 2026" />
+        <PageHeader title="Planning des voyages" subtitle={`Semaine du ${weekDays[0].label} au ${weekDays[6].label}`} />
         <Card className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
               <tr>
                 <th className="p-2 text-left text-slate-400 font-medium w-16">Horaire</th>
-                {days.map(d => <th key={d} className="p-2 text-center text-slate-600 font-semibold min-w-[110px]">{d}</th>)}
+                {weekDays.map(d => <th key={d.dateStr} className="p-2 text-center text-slate-600 font-semibold min-w-[120px]">{d.label}</th>)}
               </tr>
             </thead>
             <tbody>
               {slots.map(slot => (
                 <tr key={slot} className="border-t border-slate-50">
                   <td className="p-2 font-mono text-slate-500 font-semibold">{slot}</td>
-                  {days.map(d => {
-                    const key = `${d}-${slot}`;
-                    const occ = grid[key];
+                  {weekDays.map(day => {
+                    const matchingVoyage = voyages.find(v => 
+                      v.date_voyage === day.dateStr && 
+                      (v.heure_depart === slot || v.heure_depart?.startsWith(slot))
+                    );
+
                     return (
-                      <td key={d} className="p-1">
-                        {occ ? (
-                          <div className="rounded-lg p-1.5 text-center text-white text-[10px] font-semibold cursor-pointer hover:opacity-80"
-                            style={{ background: chColors[occ] ?? "#1035A8" }}>
-                            {occ}
+                      <td key={day.dateStr} className="p-1">
+                        {matchingVoyage ? (
+                          <div 
+                            className="rounded-lg p-1.5 text-center text-white text-[10px] font-semibold cursor-pointer hover:opacity-80 transition-opacity"
+                            style={{ background: chColors[matchingVoyage.chaloupe] ?? "#1035A8" }}
+                            onClick={() => handleOpenEdit(matchingVoyage)}
+                          >
+                            <div>{matchingVoyage.chaloupe}</div>
+                            <div className="opacity-75 mt-0.5">{matchingVoyage.vendus} / {matchingVoyage.places} vendus</div>
                           </div>
                         ) : (
-                          <div className="rounded-lg p-1.5 text-center text-slate-300 text-[10px] border border-dashed border-slate-200 cursor-pointer hover:border-blue-300 hover:text-blue-400 transition-colors"
-                            onClick={handleOpenAdd}>
+                          <div 
+                            className="rounded-lg p-2.5 text-center text-slate-300 text-[10px] border border-dashed border-slate-200 cursor-pointer hover:border-blue-300 hover:text-blue-400 transition-colors"
+                            onClick={() => handlePlanForSlot(day.dateStr, slot)}
+                          >
                             + Planifier
                           </div>
                         )}

@@ -7,4 +7,6 @@ export interface Voyage {
   vendus: number;
   statut: string;
   recette: string;
+  date_voyage?: string;
+  heure_depart?: string;
 }
