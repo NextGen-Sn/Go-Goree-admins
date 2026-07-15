@@ -21,6 +21,8 @@ function mapVoyage(backendVoyage: any): Voyage {
     vendus: sold,
     statut: statut,
     recette: recette,
+    date_voyage: backendVoyage.date_voyage,
+    heure_depart: trajet.heure_depart ? String(trajet.heure_depart).slice(0, 5) : "00:00",
   };
 }
 
