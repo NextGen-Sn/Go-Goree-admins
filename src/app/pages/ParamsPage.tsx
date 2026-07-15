@@ -1,32 +1,121 @@
+import { useState, useEffect } from "react";
 import { PageHeader, Btn, Card, Table } from "@/app/components/ui/Shared";
 import { C, StatusBadge, cn } from "@/app/components/layout/common";
-import { Shield, Edit, User, Key, Download, Eye, Plus } from "lucide-react";
+import { Shield, User, Key, Trash2, X, Clipboard, CheckCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { laravelClient } from "@/app/api/laravelClient";
+import { 
+  useSettings, 
+  useUpdateSettings, 
+  useActivityLogs, 
+  useTokens, 
+  useCreateToken, 
+  useDeleteToken 
+} from "@/app/hooks/settings/useSettings";
+import { toast } from "sonner";
 
 export default function ParamsPage({ sub }: { sub: string }) {
+  // Query all users to count by role dynamically
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ["all-users-settings"],
+    queryFn: async () => {
+      const res = await laravelClient.get("/v1/users");
+      return Array.isArray(res.data) ? res.data : (res.data.data || []);
+    }
+  });
+
+  const { data: settings = {} } = useSettings();
+  const updateSettingsMutation = useUpdateSettings();
+  const { data: logsData } = useActivityLogs();
+  const logs = logsData?.data || [];
+
+  const { data: tokens = [] } = useTokens();
+  const createTokenMutation = useCreateToken();
+  const deleteTokenMutation = useDeleteToken();
+
+  // General Settings inputs
+  const [serviceName, setServiceName] = useState("Go Gorée");
+  const [operator, setOperator] = useState("Société de Navigation de Gorée");
+  const [route, setRoute] = useState("Dakar Port ↔ Île de Gorée");
+  const [duration, setDuration] = useState("20 minutes");
+  const [timezone, setTimezone] = useState("Africa/Dakar (UTC+0)");
+  const [currency, setCurrency] = useState("Franc CFA (FCFA / XOF)");
+
+  // Tokens states
+  const [newTokenName, setNewTokenName] = useState("");
+  const [plainToken, setPlainToken] = useState<string | null>(null);
+
+  // Sync general settings from loaded data
+  useEffect(() => {
+    if (settings.serviceName) setServiceName(settings.serviceName);
+    if (settings.operator) setOperator(settings.operator);
+    if (settings.route) setRoute(settings.route);
+    if (settings.duration) setDuration(settings.duration);
+    if (settings.timezone) setTimezone(settings.timezone);
+    if (settings.currency) setCurrency(settings.currency);
+  }, [settings]);
+
+  const handleSaveSettings = async () => {
+    try {
+      await updateSettingsMutation.mutateAsync({
+        serviceName,
+        operator,
+        route,
+        duration,
+        timezone,
+        currency
+      });
+      toast.success("Paramètres généraux sauvegardés avec succès.");
+    } catch (err) {
+      toast.error("Erreur de sauvegarde des paramètres.");
+    }
+  };
+
+  const handleCreateToken = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTokenName) return;
+    try {
+      const res = await createTokenMutation.mutateAsync(newTokenName);
+      setPlainToken(res.plain_text_token);
+      setNewTokenName("");
+      toast.success("Clé API générée avec succès.");
+    } catch (err) {
+      toast.error("Erreur lors de la création de la clé API.");
+    }
+  };
+
+  const handleDeleteToken = async (id: string | number) => {
+    if (confirm("Révoquer définitivement cette clé d'accès ?")) {
+      try {
+        await deleteTokenMutation.mutateAsync(id);
+        toast.success("Accès révoqué.");
+      } catch (err) {
+        toast.error("Erreur de révocation.");
+      }
+    }
+  };
+
   if (sub === "roles") {
     return (
       <div className="p-6">
-        <PageHeader title="Rôles & Permissions" subtitle="Gestion des accès et autorisations"
-          actions={<Btn label="Nouveau rôle" icon={Plus} variant="primary" />} />
+        <PageHeader title="Rôles & Permissions" subtitle="Gestion des accès et autorisations" />
         <div className="grid grid-cols-3 gap-4">
           {[
-            { role: "Super Admin", users: 1, desc: "Accès total à toutes les fonctionnalités du système", color: C.purple },
-            { role: "Administrateur", users: 3, desc: "Gestion complète sauf sécurité avancée", color: C.ocean },
-            { role: "Comptable", users: 2, desc: "Accès aux paiements, wallet et rapports financiers", color: C.amber },
-            { role: "Support", users: 2, desc: "Gestion des tickets d'assistance et FAQ", color: "#94a3b8" },
+            { role: "Super Admin", count: allUsers.filter((u: any) => u.role?.nom === "SuperAdmin").length || 1, desc: "Accès total à toutes les fonctionnalités du système", color: C.purple },
+            { role: "Administrateur", count: allUsers.filter((u: any) => u.role?.nom === "Admin").length || 3, desc: "Gestion complète sauf sécurité avancée", color: C.ocean },
+            { role: "Agent", count: allUsers.filter((u: any) => u.role?.nom === "Agent").length || 2, desc: "Scan de billets et ouverture d'embarcations", color: C.amber },
           ].map(r => (
             <Card key={r.role}>
               <div className="flex items-start justify-between mb-3">
                 <div className="size-10 rounded-xl flex items-center justify-center" style={{ background: r.color + "18" }}>
                   <Shield size={18} style={{ color: r.color }} />
                 </div>
-                <button className="p-1 rounded hover:bg-slate-100 text-slate-400"><Edit size={13} /></button>
               </div>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1">{r.role}</h3>
               <p className="text-xs text-slate-500 mb-3">{r.desc}</p>
               <div className="flex items-center gap-1 text-xs text-slate-400">
                 <User size={11} />
-                <span>{r.users} utilisateur{r.users > 1 ? "s" : ""}</span>
+                <span>{r.count} utilisateur{r.count > 1 ? "s" : ""}</span>
               </div>
             </Card>
           ))}
@@ -36,18 +125,21 @@ export default function ParamsPage({ sub }: { sub: string }) {
   }
 
   if (sub === "agents") {
+    const agentsList = allUsers.filter((u: any) => u.role?.nom === "Admin" || u.role?.nom === "Agent" || u.role?.nom === "SuperAdmin");
+
     return (
       <div className="p-6">
-        <PageHeader title="Agents" subtitle="Gestion des agents administratifs"
-          actions={<Btn label="Ajouter agent" icon={Plus} variant="primary" />} />
+        <PageHeader title="Agents" subtitle="Gestion des agents et administrateurs de la plateforme" />
         <Card>
           <Table
-            cols={["Agent", "Rôle", "Email", "Téléphone", "Statut", "Dernière connexion", ""]}
-            rows={[
-              ["Amadou Diallo", "Administrateur", "a.diallo@gogoree.sn", "+221 77 100 11 22", <StatusBadge statut="Actif" />, "11 Jul 2026, 08:30", <div className="flex gap-1"><button className="p-1 rounded hover:bg-slate-100 text-slate-400"><Eye size={14} /></button><button className="p-1 rounded hover:bg-slate-100 text-slate-400"><Edit size={14} /></button></div>],
-              ["Ndèye Diop", "Comptable", "n.diop@gogoree.sn", "+221 77 200 33 44", <StatusBadge statut="Actif" />, "11 Jul 2026, 09:15", <div className="flex gap-1"><button className="p-1 rounded hover:bg-slate-100 text-slate-400"><Eye size={14} /></button><button className="p-1 rounded hover:bg-slate-100 text-slate-400"><Edit size={14} /></button></div>],
-              ["Moussa Gueye", "Support", "m.gueye@gogoree.sn", "+221 77 300 55 66", <StatusBadge statut="Actif" />, "10 Jul 2026, 17:42", <div className="flex gap-1"><button className="p-1 rounded hover:bg-slate-100 text-slate-400"><Eye size={14} /></button><button className="p-1 rounded hover:bg-slate-100 text-slate-400"><Edit size={14} /></button></div>],
-            ]}
+            cols={["Nom", "Rôle", "Email", "Téléphone", "Statut"]}
+            rows={agentsList.map((u: any) => [
+              <span className="font-semibold text-slate-800" key={`nom-${u.id}`}>{u.prenom} {u.nom}</span>,
+              <span className="text-xs bg-slate-100 px-2 py-0.5 rounded font-medium" key={`role-${u.id}`}>{u.role?.nom}</span>,
+              <span className="text-xs text-slate-500" key={`email-${u.id}`}>{u.email}</span>,
+              <span className="text-xs text-slate-500 font-mono" key={`tel-${u.id}`}>{u.telephone || "—"}</span>,
+              <StatusBadge statut={u.active ? "Actif" : "Inactif"} key={`stat-${u.id}`} />,
+            ])}
           />
         </Card>
       </div>
@@ -57,91 +149,63 @@ export default function ParamsPage({ sub }: { sub: string }) {
   if (sub === "api") {
     return (
       <div className="p-6">
-        <PageHeader title="API & Intégrations" subtitle="Gestion des clés API et webhooks"
-          actions={<Btn label="Générer clé API" icon={Key} variant="primary" />} />
+        <PageHeader title="API & Clés d'Accès" subtitle="Gestion des jetons de connexion et webhooks" />
+        
+        {plainToken && (
+          <Card className="mb-6 border-2 border-emerald-300 bg-emerald-50/20 max-w-xl">
+            <div className="flex justify-between items-center mb-2">
+              <h4 className="text-xs font-bold text-emerald-800">Nouvelle Clé API Générée</h4>
+              <button onClick={() => setPlainToken(null)}><X size={14} /></button>
+            </div>
+            <p className="text-xs text-slate-600 mb-3">Veuillez copier cette clé maintenant. Pour des raisons de sécurité, elle ne sera plus affichée par la suite.</p>
+            <div className="flex gap-2">
+              <code className="flex-1 p-2 bg-white border border-emerald-200 rounded text-xs font-mono select-all break-all">{plainToken}</code>
+              <button 
+                onClick={() => { navigator.clipboard.writeText(plainToken); toast.success("Clé copiée !"); }}
+                className="px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs flex items-center gap-1 font-semibold"
+              >
+                Copier
+              </button>
+            </div>
+          </Card>
+        )}
+
         <div className="grid grid-cols-2 gap-6">
+          <Card>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Générer une clé API</h3>
+            <form onSubmit={handleCreateToken} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Nom de l'application / Usage</label>
+                <input 
+                  value={newTokenName} 
+                  onChange={e => setNewTokenName(e.target.value)}
+                  placeholder="Ex: Application Mobile Scanner" 
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white"
+                  required 
+                />
+              </div>
+              <Btn label="Créer la clé d'accès" icon={Key} variant="primary" type="submit" />
+            </form>
+          </Card>
+
           <Card>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Clés API actives</h3>
             <div className="space-y-3">
-              {[
-                { name: "Application Mobile", key: "gg_live_sk_••••••••4a9f", statut: "Actif" },
-                { name: "Portail Web", key: "gg_live_sk_••••••••8b2e", statut: "Actif" },
-                { name: "Reporting", key: "gg_test_sk_••••••••3c1d", statut: "Test" },
-              ].map(k => (
-                <div key={k.name} className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
-                  <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{k.name}</span>
-                    <StatusBadge statut={k.statut} />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <code className="text-xs font-mono text-slate-600 bg-slate-200 px-2 py-0.5 rounded">{k.key}</code>
-                    <button className="text-xs font-medium hover:underline" style={{ color: C.ocean }}>Copier</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-          <Card>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Webhooks</h3>
-            <div className="space-y-3">
-              {[
-                { url: "https://app.gogoree.sn/webhooks/paiements", events: "payment.success, payment.failed" },
-                { url: "https://app.gogoree.sn/webhooks/billets", events: "ticket.created, ticket.validated" },
-              ].map((w, i) => (
-                <div key={i} className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
-                  <div className="text-xs font-mono text-slate-700 truncate max-w-[260px] mb-1">{w.url}</div>
-                  <div className="text-[10px] text-slate-400 dark:text-slate-500">{w.events}</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  if (sub === "securite") {
-    return (
-      <div className="p-6">
-        <PageHeader title="Sécurité" subtitle="Configuration de la sécurité du système" />
-        <div className="grid grid-cols-2 gap-6">
-          <Card>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Authentification</h3>
-            <div className="space-y-3">
-              {[
-                { label: "Authentification à 2 facteurs (2FA)", enabled: true },
-                { label: "Alerte de connexion inhabituelle", enabled: true },
-                { label: "Blocage après 5 tentatives", enabled: true },
-                { label: "Session expirée après 8h", enabled: false },
-              ].map(s => (
-                <div key={s.label} className="flex items-center justify-between py-2 border-b border-slate-50 dark:border-slate-700">
-                  <span className="text-sm text-slate-700 dark:text-slate-300">{s.label}</span>
-                  <div className={cn("w-10 h-5 rounded-full relative cursor-pointer transition-colors", s.enabled ? "" : "bg-slate-200")}
-                    style={s.enabled ? { background: C.ocean } : undefined}>
-                    <div className={cn("absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform", s.enabled ? "translate-x-5" : "translate-x-0.5")} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-          <Card>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Sessions actives</h3>
-            <div className="space-y-2">
-              {[
-                { device: "Chrome — Dakar, Sénégal", ip: "41.82.xxx.xxx", time: "Session en cours", current: true },
-                { device: "Firefox — Dakar, Sénégal", ip: "41.82.xxx.xxx", time: "Il y a 2 heures", current: false },
-              ].map((s, i) => (
-                <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700">
-                  <div>
-                    <div className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
-                      {s.device}
-                      {s.current && <StatusBadge statut="Actif" />}
+              {tokens.length === 0 ? (
+                <div className="text-xs text-slate-400 py-4 text-center">Aucune clé API active</div>
+              ) : (
+                tokens.map((k: any) => (
+                  <div key={k.id} className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">{k.name}</div>
+                      <div className="text-[10px] text-slate-400 mt-1 font-mono">Dernière utilisation: {k.last_used_at ? new Date(k.last_used_at).toLocaleDateString("fr-FR") : "Jamais"}</div>
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">{s.ip} · {s.time}</div>
+                    <button onClick={() => handleDeleteToken(k.id)} className="p-1.5 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors" title="Révoquer">
+                      <Trash2 size={14} />
+                    </button>
                   </div>
-                  {!s.current && <button className="text-xs text-red-500 hover:text-red-700 font-medium">Révoquer</button>}
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </Card>
         </div>
@@ -152,103 +216,18 @@ export default function ParamsPage({ sub }: { sub: string }) {
   if (sub === "journal") {
     return (
       <div className="p-6">
-        <PageHeader title="Journal d'activités" subtitle="Historique de toutes les actions administratives"
-          actions={<Btn label="Exporter" icon={Download} variant="secondary" />} />
+        <PageHeader title="Journal d'activités" subtitle="Historique de toutes les actions administratives" />
         <Card>
           <Table
             cols={["Date & heure", "Utilisateur", "Action", "Détails", "IP"]}
-            rows={[
-              ["11 Jul 2026, 10:42", "Admin", "Validation demande résident", "DR-0234 — Mame Diarra Faye", "41.82.xxx"],
-              ["11 Jul 2026, 09:30", "Admin", "Modification tarif résident", "800 → 800 FCFA (inchangé)", "41.82.xxx"],
-              ["11 Jul 2026, 08:15", "Ndèye Diop", "Export rapport", "rapport_financier_juillet.xlsx", "41.83.xxx"],
-              ["10 Jul 2026, 17:55", "Admin", "Modification statut chaloupe", "Augustin Elimane Ly → Maintenance", "41.82.xxx"],
-              ["10 Jul 2026, 16:20", "Admin", "Création voyage", "VY-2024-009 planifié", "41.82.xxx"],
-            ]}
+            rows={logs.map((log: any) => [
+              <span className="font-mono text-xs text-slate-500" key={`date-${log.id}`}>{new Date(log.created_at).toLocaleString("fr-FR")}</span>,
+              <span className="font-semibold text-slate-800" key={`user-${log.id}`}>{log.user_name}</span>,
+              <span className="font-semibold text-blue-700" key={`act-${log.id}`}>{log.action}</span>,
+              <span className="text-xs text-slate-600" key={`det-${log.id}`}>{log.details || "—"}</span>,
+              <span className="font-mono text-xs text-slate-400" key={`ip-${log.id}`}>{log.ip_address}</span>,
+            ])}
           />
-        </Card>
-      </div>
-    );
-  }
-
-  if (sub === "sauvegardes") {
-    const backups = [
-      { file: "backup_20260711_0200", label: "11 Jul 2026 — 02:00", age: "Aujourd'hui", size: "2.8 GB" },
-      { file: "backup_20260710_0200", label: "10 Jul 2026 — 02:00", age: "Hier", size: "2.8 GB" },
-      { file: "backup_20260709_0200", label: "09 Jul 2026 — 02:00", age: "Il y a 2 jours", size: "2.7 GB" },
-    ];
-    return (
-      <div className="p-6">
-        <PageHeader title="Sauvegardes" subtitle="Gestion des sauvegardes automatiques et manuelles"
-          actions={<Btn label="Sauvegarder maintenant" icon={Download} variant="primary" />} />
-        <div className="grid grid-cols-2 gap-6">
-          <Card>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Configuration</h3>
-            <div className="space-y-1">
-              {[
-                ["Fréquence automatique", "Quotidienne à 02:00"],
-                ["Rétention", "30 jours"],
-                ["Stockage cloud", "AWS S3 eu-west-1"],
-                ["Chiffrement", "AES-256"],
-                ["Prochaine sauvegarde", "12 Jul 2026, 02:00"],
-              ].map(([k, v]) => (
-                <div key={k} className="flex items-center justify-between py-2.5 border-b border-slate-50 dark:border-slate-700 last:border-0">
-                  <span className="text-sm text-slate-500 shrink-0 mr-4">{k}</span>
-                  <span className="text-sm font-semibold text-slate-800 text-right">{v}</span>
-                </div>
-              ))}
-            </div>
-          </Card>
-          <Card>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Sauvegardes récentes</h3>
-            <div className="space-y-2">
-              {backups.map((b, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
-                  <div className="text-emerald-500"><Shield size={16} /></div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-mono font-medium text-slate-700 truncate">
-                      gogoree_{b.file}.tar.gz
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">{b.size} · {b.age}</div>
-                  </div>
-                  <button
-                    className="text-xs font-semibold shrink-0 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 hover:border-blue-300 hover:text-blue-700 dark:hover:text-blue-400 transition-colors"
-                    style={{ color: C.ocean }}
-                  >
-                    Restaurer
-                  </button>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  if (sub === "tarifs") {
-    return (
-      <div className="p-6">
-        <PageHeader title="Configuration tarifs" subtitle="Règles et paramètres de tarification"
-          actions={<Btn label="Sauvegarder" icon={Download} variant="primary" />} />
-        <Card>
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Règles de tarification</h3>
-          <div className="space-y-3">
-            {[
-              { label: "Réduction groupe automatique (≥10 pers)", enabled: true },
-              { label: "Abonnement mensuel résidents", enabled: true },
-              { label: "Gratuité enfants de moins de 3 ans", enabled: true },
-              { label: "Tarif préférentiel scolaires", enabled: true },
-              { label: "Tarification haute saison (juillet-août)", enabled: false },
-            ].map(r => (
-              <div key={r.label} className="flex items-center justify-between py-2 border-b border-slate-50 dark:border-slate-700">
-                <span className="text-sm text-slate-700 dark:text-slate-300">{r.label}</span>
-                <div className={cn("w-10 h-5 rounded-full relative cursor-pointer transition-colors", r.enabled ? "" : "bg-slate-200")}
-                  style={r.enabled ? { background: C.ocean } : undefined}>
-                  <div className={cn("absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform", r.enabled ? "translate-x-5" : "translate-x-0.5")} />
-                </div>
-              </div>
-            ))}
-          </div>
         </Card>
       </div>
     );
@@ -256,27 +235,33 @@ export default function ParamsPage({ sub }: { sub: string }) {
 
   return (
     <div className="p-6">
-      <PageHeader title="Paramètres généraux" subtitle="Configuration de base du système"
-        actions={<Btn label="Sauvegarder" icon={Download} variant="primary" />} />
+      <PageHeader title="Paramètres généraux" subtitle="Configuration de base du service"
+        actions={<Btn label="Sauvegarder" icon={CheckCircle} variant="primary" onClick={handleSaveSettings} />} />
+      
       <div className="grid grid-cols-2 gap-6">
         <Card>
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Informations du service</h3>
           <div className="space-y-4">
             {[
-              { label: "Nom du service", value: "Go Gorée" },
-              { label: "Opérateur", value: "Société de Navigation de Gorée" },
-              { label: "Route principale", value: "Dakar Port ↔ Île de Gorée" },
-              { label: "Durée de traversée", value: "20 minutes" },
-              { label: "Fuseau horaire", value: "Africa/Dakar (UTC+0)" },
-              { label: "Devise", value: "Franc CFA (FCFA / XOF)" },
+              { label: "Nom du service", value: serviceName, setter: setServiceName },
+              { label: "Opérateur", value: operator, setter: setOperator },
+              { label: "Route principale", value: route, setter: setRoute },
+              { label: "Durée de traversée", value: duration, setter: setDuration },
+              { label: "Fuseau horaire", value: timezone, setter: setTimezone },
+              { label: "Devise", value: currency, setter: setCurrency },
             ].map(f => (
               <div key={f.label}>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">{f.label}</label>
-                <input defaultValue={f.value} className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" />
+                <input 
+                  value={f.value} 
+                  onChange={e => f.setter(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" 
+                />
               </div>
             ))}
           </div>
         </Card>
+        
         <Card>
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Alertes système</h3>
           <div className="space-y-3">
