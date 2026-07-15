@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Btn, Card, PageHeader, Table } from "@/app/components/ui/Shared";
 import { C, Badge, StatusBadge, cn } from "@/app/components/layout/common";
-import { Plus, Edit, Trash2, CheckCircle, X, Ban, Check } from "lucide-react";
+import { Plus, Edit, Trash2, CheckCircle, X, Ban, Check, Mail } from "lucide-react";
 import { 
   useControleurs, 
   useCreateControleur, 
   useUpdateControleur, 
-  useDeleteControleur 
+  useDeleteControleur,
+  useResendControleurInvitation
 } from "@/app/hooks/controleurs/useControleurs";
 import { toast } from "sonner";
 
@@ -15,6 +16,7 @@ export default function CtrlPage({ sub }: { sub: string }) {
   const createMutation = useCreateControleur();
   const updateMutation = useUpdateControleur();
   const deleteMutation = useDeleteControleur();
+  const resendMutation = useResendControleurInvitation();
 
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -38,6 +40,16 @@ export default function CtrlPage({ sub }: { sub: string }) {
       )}
     </div>
   );
+
+  const handleResendInvitation = async (id: string) => {
+    try {
+      await resendMutation.mutateAsync(id);
+      toast.success("E-mail d'activation renvoyé avec succès.");
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || "Impossible de renvoyer l'invitation.";
+      toast.error(msg);
+    }
+  };
 
   const handleOpenEdit = (c: any) => {
     setEditId(c.id);
@@ -216,9 +228,17 @@ export default function CtrlPage({ sub }: { sub: string }) {
             <span key={`email-${c.id}`}>{c.email}</span>,
             <Badge key={`shift-${c.id}`} label={c.shift} color="blue" />,
             <span key={`chaloupe-${c.id}`}>{c.chaloupe}</span>,
-            <StatusBadge key={`statut-${c.id}`} statut={c.statut} />,
+            <StatusBadge key={`statut-${c.id}`} statut={c.invitePending ? "En attente" : c.statut} />,
             <div className="flex gap-1.5 items-center" key={`actions-${c.id}`}>
               <button className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-blue-600 transition-colors" onClick={() => handleOpenEdit(c)} title="Modifier"><Edit size={14} /></button>
+              {c.invitePending && (
+                <button className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-amber-600 transition-colors"
+                   onClick={() => handleResendInvitation(c.id)}
+                   title="Renvoyer l'email d'invitation"
+                   disabled={resendMutation.isPending}>
+                   <Mail size={14} className={resendMutation.isPending ? "animate-spin" : ""} />
+                </button>
+              )}
               <button className={cn("p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors", c.statut === "Actif" ? "text-amber-500 hover:text-amber-600" : "text-emerald-500 hover:text-emerald-600")}
                  onClick={() => handleToggleStatus(c.id, c.statut)}
                  title={c.statut === "Actif" ? "Désactiver (Passer inactif)" : "Activer (Passer actif)"}>

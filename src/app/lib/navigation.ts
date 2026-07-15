@@ -19,7 +19,6 @@ export const NAV: NavItem[] = [
   ]},
   { id: "controlleurs", label: "Contrôleurs", icon: undefined, children: [
     { label: "Liste contrôleurs", page: "ctrl-liste" },
-    { label: "Planning", page: "ctrl-planning" },
   ]},
   { id: "chaloupes", label: "Chaloupes", icon: undefined, children: [
     { label: "Flotte", page: "chaloupes-liste" },

@@ -4,7 +4,8 @@ import {
   getPlanningControleurs, 
   createControleur, 
   updateControleur, 
-  deleteControleur 
+  deleteControleur,
+  resendControleurInvitation
 } from "../../services/controleurs/controleursService";
 import type { Controleur } from "../../types/controleurs";
 
@@ -48,6 +49,16 @@ export function useDeleteControleur() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteControleur(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["controleurs"] });
+    },
+  });
+}
+
+export function useResendControleurInvitation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => resendControleurInvitation(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["controleurs"] });
     },
