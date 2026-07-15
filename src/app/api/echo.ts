@@ -15,6 +15,7 @@ export function getEcho(): Echo {
   const port = import.meta.env.VITE_REVERB_PORT ?? "8080";
   const scheme = import.meta.env.VITE_REVERB_SCHEME ?? "http";
   const apiHost = import.meta.env.VITE_API_LARAVEL_URL ?? "http://localhost:8000/api";
+  const baseURL = apiHost.replace(/\/api$/, "");
 
   // Configuration Reverb WebSocket
   echoInstance = new Echo({
@@ -25,7 +26,7 @@ export function getEcho(): Echo {
     wssPort: parseInt(port),
     forceTLS: scheme === "https",
     enabledTransports: ["ws", "wss"],
-    authEndpoint: `${apiHost}/broadcasting/auth`,
+    authEndpoint: `${baseURL}/broadcasting/auth`,
     auth: {
       headers: {
         Authorization: `Bearer ${useAuthStore.getState().token}`,

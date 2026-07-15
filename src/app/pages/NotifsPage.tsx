@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { PageHeader, Btn, Card, Table } from "@/app/components/ui/Shared";
-import { C, StatusBadge } from "@/app/components/layout/common";
+import { C, Badge } from "@/app/components/layout/common";
 import { Smartphone, Mail, Bell, MessageSquare, Send, BellRing, Download } from "lucide-react";
 import { useNotifications, useBroadcastNotification } from "@/app/hooks/notifications/useNotifications";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ export default function NotifsPage({ sub }: { sub: string }) {
   const [message, setMessage] = useState("");
   const [canal, setCanal] = useState("IN_APP"); // Default to IN_APP (in app + real-time reverb)
   const [titre, setTitre] = useState("");
+  const [destinataires, setDestinataires] = useState("Tous les passagers");
 
   const feedback = (
     <div className="space-y-2 mb-4">
@@ -30,18 +31,28 @@ export default function NotifsPage({ sub }: { sub: string }) {
 
   const handleBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message) {
+    if (!titre.trim()) {
+      toast.error("Veuillez saisir un titre.");
+      return;
+    }
+    if (!message.trim()) {
       toast.error("Veuillez saisir un message.");
       return;
     }
 
     try {
-      const fullMessage = titre ? `[${titre}] ${message}` : message;
-      await broadcastMutation.mutateAsync({
-        canal: canal.toUpperCase(),
-        message: fullMessage,
+      const res = await broadcastMutation.mutateAsync({
+        titre: titre.trim(),
+        message: message.trim(),
+        canal,
+        destinataires,
       });
-      toast.success("Campagne de notification diffusée avec succès !");
+      const nb = res?.destinataires_contactes;
+      toast.success(
+        typeof nb === "number"
+          ? `Notification diffusée à ${nb} destinataire${nb > 1 ? "s" : ""}.`
+          : "Campagne de notification diffusée avec succès !"
+      );
       setMessage("");
       setTitre("");
     } catch (err) {
@@ -72,6 +83,7 @@ export default function NotifsPage({ sub }: { sub: string }) {
                       { label: "In-App / Temps réel", key: "IN_APP", icon: MessageSquare },
                       { label: "Email", key: "EMAIL", icon: Mail },
                       { label: "SMS", key: "SMS", icon: Smartphone },
+                      { label: "Push", key: "PUSH", icon: Bell },
                     ].map(item => (
                       <button type="button" key={item.key} onClick={() => setCanal(item.key)}
                         className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-medium transition-all ${
@@ -94,6 +106,15 @@ export default function NotifsPage({ sub }: { sub: string }) {
                   <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Message</label>
                   <textarea className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none resize-none bg-white dark:bg-slate-800"
                     rows={5} placeholder="Rédigez votre message ici..." value={message} onChange={e => setMessage(e.target.value)} required />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Destinataires</label>
+                  <select className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                    value={destinataires} onChange={e => setDestinataires(e.target.value)}>
+                    {["Tous les passagers", "Résidents uniquement", "Touristes uniquement", "Scolaires uniquement"].map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
                 </div>
                 <button type="submit" disabled={broadcastMutation.isPending}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow transition-colors">
@@ -128,21 +149,22 @@ export default function NotifsPage({ sub }: { sub: string }) {
     );
   }
 
+  const canalColor = (c: string) => (c === "SMS" ? "blue" : c === "MAIL" ? "teal" : c === "IN_APP" ? "purple" : "gray");
+  const canalLabel = (c: string) => (c === "MAIL" ? "Email" : c === "IN_APP" ? "In-App" : c);
+
   if (sub === "historique") {
     return (
       <div className="p-6">
         {feedback}
-        <PageHeader title="Historique des notifications" subtitle="Toutes les communications envoyées"
-          actions={<Btn label="Exporter" icon={Download} variant="secondary" />} />
+        <PageHeader title="Historique des notifications" subtitle="Notifications enregistrées (in-app & alertes)" />
         <Card>
           <Table
-            cols={["Date", "Canal", "Destinataires", "Message", "Statut"]}
+            cols={["Date", "Canal", "Type", "Statut"]}
             rows={notifications.map(n => [
               <span key={`date-${n.id}`}>{n.date}</span>,
-              <Badge key={`canal-${n.id}`} label={n.canal} color={n.canal === "SMS" ? "blue" : n.canal === "EMAIL" ? "teal" : "purple"} />,
-              <span key={`dest-${n.id}`}>{n.destinataires}</span>,
-              <span key={`msg-${n.id}`} className="text-xs truncate max-w-sm block" title={n.message}>{n.message}</span>,
-              <StatusBadge key={`stat-${n.id}`} statut="Validé" />,
+              <Badge key={`canal-${n.id}`} label={canalLabel(n.canal)} color={canalColor(n.canal)} />,
+              <Badge key={`type-${n.id}`} label={n.type} color={n.type === "ALERTE" ? "red" : "indigo"} />,
+              <Badge key={`stat-${n.id}`} label={n.lu ? "Lu" : "Non lu"} color={n.lu ? "green" : "amber"} />,
             ])}
           />
         </Card>
@@ -150,19 +172,21 @@ export default function NotifsPage({ sub }: { sub: string }) {
     );
   }
 
+  // Filtre par canal : la clé de route (inapp/email/sms/push) → valeur backend (CanalEnum)
+  const SUB_TO_CANAL: Record<string, string> = { sms: "SMS", email: "MAIL", push: "PUSH", inapp: "IN_APP" };
   const labels: Record<string, string> = { sms: "SMS", email: "Email", push: "Notifications Push", inapp: "In-App" };
-  const canalFilter = sub.toUpperCase();
+  const canalFilter = SUB_TO_CANAL[sub] ?? sub.toUpperCase();
+  const canalItems = notifications.filter(n => n.canal === canalFilter);
 
   return (
     <div className="p-6">
       {feedback}
-      <PageHeader title={`Canal — ${labels[sub] ?? sub}`} subtitle="Statistiques et historique du mois" />
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        {[ 
-          ["Envoyés (mois)", notifications.filter(n => n.canal === canalFilter).length, C.ocean], 
-          ["Délivrés", notifications.filter(n => n.canal === canalFilter).length, C.teal], 
-          ["Taux d'ouverture", "100%", C.green], 
-          ["Échecs", "0", C.red] 
+      <PageHeader title={`Canal — ${labels[sub] ?? sub}`} subtitle="Notifications enregistrées sur ce canal" />
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        {[
+          ["Enregistrées", canalItems.length, C.ocean],
+          ["Lues", canalItems.filter(n => n.lu).length, C.green],
+          ["Non lues", canalItems.filter(n => !n.lu).length, C.red],
         ].map(([l, v, c]) => (
           <Card key={l as string} className="text-center py-4">
             <div className="text-xl font-bold font-mono" style={{ color: c as string }}>{v as string}</div>
@@ -172,12 +196,11 @@ export default function NotifsPage({ sub }: { sub: string }) {
       </div>
       <Card>
         <Table
-          cols={["Date", "Destinataires", "Message", "Statut"]}
-          rows={notifications.filter(n => n.canal === canalFilter).map(n => [
+          cols={["Date", "Type", "Statut"]}
+          rows={canalItems.map(n => [
             <span key={`date-${n.id}`}>{n.date}</span>,
-            <span key={`dest-${n.id}`}>{n.destinataires}</span>,
-            <span key={`msg-${n.id}`} className="text-xs truncate max-w-lg block" title={n.message}>{n.message}</span>,
-            <StatusBadge key={`stat-${n.id}`} statut="Validé" />,
+            <Badge key={`type-${n.id}`} label={n.type} color={n.type === "ALERTE" ? "red" : "indigo"} />,
+            <Badge key={`stat-${n.id}`} label={n.lu ? "Lu" : "Non lu"} color={n.lu ? "green" : "amber"} />,
           ])}
         />
       </Card>
