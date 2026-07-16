@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PageHeader, Btn, Card, Table } from "@/app/components/ui/Shared";
+import { PageHeader, Btn, Card, Table , Loader } from "@/app/components/ui/Shared";
 import { C, Badge } from "@/app/components/layout/common";
 import { Smartphone, Mail, Bell, MessageSquare, Send, BellRing, Download } from "lucide-react";
 import { useNotifications, useBroadcastNotification } from "@/app/hooks/notifications/useNotifications";
@@ -69,8 +69,8 @@ export default function NotifsPage({ sub }: { sub: string }) {
   if (sub === "envoyer") {
     return (
       <div className="p-6">
-        {feedback}
         <PageHeader title="Envoyer une notification" subtitle="Communiquer avec les passagers" />
+      <Loader isLoading={isLoading} isError={isError} />
         <div className="grid grid-cols-2 gap-6">
           <Card>
             <form onSubmit={handleBroadcast}>
@@ -155,7 +155,7 @@ export default function NotifsPage({ sub }: { sub: string }) {
   if (sub === "historique") {
     return (
       <div className="p-6">
-        {feedback}
+        <Loader isLoading={isLoading} isError={isError} />
         <PageHeader title="Historique des notifications" subtitle="Notifications enregistrées (in-app & alertes)" />
         <Card>
           <Table
@@ -180,7 +180,7 @@ export default function NotifsPage({ sub }: { sub: string }) {
 
   return (
     <div className="p-6">
-      {feedback}
+      <Loader isLoading={isLoading} isError={isError} />
       <PageHeader title={`Canal — ${labels[sub] ?? sub}`} subtitle="Notifications enregistrées sur ce canal" />
       <div className="grid grid-cols-3 gap-4 mb-6">
         {[

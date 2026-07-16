@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   listControleurs, 
-  getPlanningControleurs, 
   createControleur, 
   updateControleur, 
   deleteControleur,
@@ -13,14 +12,6 @@ export function useControleurs() {
   return useQuery({
     queryKey: ["controleurs"],
     queryFn: listControleurs,
-    staleTime: 1000 * 60 * 5,
-  });
-}
-
-export function usePlanningControleurs() {
-  return useQuery({
-    queryKey: ["controleurs", "planning"],
-    queryFn: getPlanningControleurs,
     staleTime: 1000 * 60 * 5,
   });
 }

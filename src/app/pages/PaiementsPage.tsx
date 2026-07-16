@@ -1,4 +1,4 @@
-import { PageHeader, Btn, Card, Table, SearchBar } from "@/app/components/ui/Shared";
+import { PageHeader, Btn, Card, Table, SearchBar , Loader } from "@/app/components/ui/Shared";
 import { C, StatusBadge } from "@/app/components/layout/common";
 import { Download, Filter, Eye } from "lucide-react";
 import { usePaiements } from "@/app/hooks/paiements/usePaiements";
@@ -59,8 +59,8 @@ export default function PaiementsPage({ sub }: { sub: string }) {
 
     return (
       <div className="p-6">
-        {feedback}
         <PageHeader title={labels[sub] ?? sub} subtitle="Transactions réelles sur ce moyen de paiement" />
+      <Loader isLoading={isLoading} isError={isError} />
         <div className="grid grid-cols-4 gap-4 mb-6">
           {[ ["Transactions", filtered.length, C.ocean], ["Volume", `${volume.toLocaleString("fr-FR")} FCFA`, C.teal], ["Taux de succès", tauxSucces, C.green], ["En attente", enAttente, C.amber] ].map(([l, v, c]) => (
             <Card key={l as string} className="text-center py-4">
@@ -87,7 +87,7 @@ export default function PaiementsPage({ sub }: { sub: string }) {
 
   return (
     <div className="p-6">
-      {feedback}
+      <Loader isLoading={isLoading} isError={isError} />
       <PageHeader title="Transactions" subtitle="Toutes les transactions de paiement"
         actions={<><Btn label="Exporter" icon={Download} variant="secondary" /><Btn label="Filtrer" icon={Filter} variant="secondary" /></>} />
       
@@ -105,9 +105,9 @@ export default function PaiementsPage({ sub }: { sub: string }) {
           <SearchBar placeholder="Rechercher par passager, ID..." />
         </div>
         <Table
-          cols={["ID Transaction", "Passager", "Montant", "Méthode", "Date", "Statut", ""]}
+          cols={["Passager", "Montant", "Méthode", "Date", "Statut", ""]}
           rows={transactions.map(t => [
-            <span className="font-mono text-xs font-semibold" style={{ color: C.ocean }} key={`id-${t.id}`}>{t.id.slice(0, 13)}...</span>,
+            // <span className="font-mono text-xs font-semibold" style={{ color: C.ocean }} key={`id-${t.id}`}>{t.id.slice(0, 13)}...</span>,
             <span className="font-semibold text-slate-800" key={`pass-${t.id}`}>{t.passager}</span>,
             <span className="font-mono font-semibold text-slate-900 dark:text-slate-100" key={`mont-${t.id}`}>{t.montant}</span>,
             <span key={`meth-${t.id}`}>{MODE_META[t.mode]?.label ?? t.methode}</span>,

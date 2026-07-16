@@ -1,4 +1,4 @@
-import { PageHeader, Btn, Card, Table } from "@/app/components/ui/Shared";
+import { PageHeader, Btn, Card, Table , Loader } from "@/app/components/ui/Shared";
 import { C, Badge, StatusBadge } from "@/app/components/layout/common";
 import { Eye, Plus, BellRing, FileText } from "lucide-react";
 

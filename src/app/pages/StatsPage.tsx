@@ -1,4 +1,4 @@
-import { PageHeader, Btn, Card, ChartCard, Table } from "@/app/components/ui/Shared";
+import { PageHeader, Btn, Card, ChartCard, Table, Loader } from "@/app/components/ui/Shared";
 import { C, StatusBadge } from "@/app/components/layout/common";
 import { Ticket, Banknote, Activity, Star, Download } from "lucide-react";
 import { monthlyData as mockMonthlyData, pieData as mockPieData, paiementData as mockPaiementData, hourlyData as mockHourlyData, chaloupesData as mockChaloupesData } from "@/app/data/mock/dashboard.mock";
@@ -19,25 +19,14 @@ export default function StatsPage({ sub }: { sub: string }) {
   const hourlyData = metrics?.hourly_boardings ?? mockHourlyData;
   const chaloupesData = metrics?.chaloupes_occupations ?? mockChaloupesData;
 
-  const feedback = (
-    <div className="space-y-2 mb-4">
-      {isError && (
-        <div className="rounded-lg border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-4 py-2.5 text-sm text-amber-700 dark:text-amber-400">
-          Données indisponibles — affichage des dernières données connues.
-        </div>
-      )}
-      {isLoading && (
-        <div className="h-1 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
-          <div className="h-full w-1/3 animate-pulse rounded-full bg-slate-400" />
-        </div>
-      )}
-    </div>
-  );
+  const feedback = <Loader isLoading={isLoading} isError={isError} />;
+
   if (sub === "billets" || sub === "recettes") {
     return (
       <div className="p-6">
         <PageHeader title={sub === "billets" ? "Statistiques billets" : "Statistiques recettes"} subtitle="Analyse par mois — 2026"
           actions={<Btn label="Exporter" icon={Download} variant="secondary" />} />
+        {feedback}
         <div className="grid grid-cols-4 gap-4 mb-6">
           {(sub === "billets"
             ? [

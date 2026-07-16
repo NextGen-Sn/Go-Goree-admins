@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PageHeader, Btn, Card, Table } from "@/app/components/ui/Shared";
+import { PageHeader, Btn, Card, Table, Loader } from "@/app/components/ui/Shared";
 import { C, Badge, cn } from "@/app/components/layout/common";
 import { Ticket, CheckCircle, Edit, X, Plus, Clock, Trash2, Calendar } from "lucide-react";
 import { 
@@ -14,6 +14,7 @@ import {
   useUpdateTrajet, 
   useDeleteTrajet 
 } from "@/app/hooks/trajets/useTrajets";
+
 import { toast } from "sonner";
 
 export default function TarifsPage({ sub }: { sub: string }) {
@@ -41,20 +42,7 @@ export default function TarifsPage({ sub }: { sub: string }) {
   const [trajetHeure, setTrajetHeure] = useState("07:30");
   const [trajetDuree, setTrajetDuree] = useState("20");
 
-  const feedback = (
-    <div className="space-y-2 mb-4">
-      {(isError || errTrajets) && (
-        <div className="rounded-lg border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-4 py-2.5 text-sm text-amber-700 dark:text-amber-400">
-          Données indisponibles — affichage des dernières données connues.
-        </div>
-      )}
-      {(isLoading || loadTrajets) && (
-        <div className="h-1 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
-          <div className="h-full w-1/3 animate-pulse rounded-full bg-slate-400" />
-        </div>
-      )}
-    </div>
-  );
+  const feedback = <Loader isLoading={isLoading || loadTrajets} isError={isError || errTrajets} />;
 
   const startEdit = () => {
     const initialPrices: Record<string, string> = {};
@@ -101,13 +89,11 @@ export default function TarifsPage({ sub }: { sub: string }) {
   };
 
   const handleDeleteTarif = async (id: string) => {
-    if (confirm("Supprimer cette catégorie tarifaire ?")) {
-      try {
-        await deleteTarifMutation.mutateAsync(id);
-        toast.success("Catégorie supprimée.");
-      } catch (err) {
-        toast.error("Impossible de supprimer cette catégorie.");
-      }
+    try {
+      await deleteTarifMutation.mutateAsync(id);
+      toast.success("Catégorie supprimée.");
+    } catch (err) {
+      toast.error("Impossible de supprimer cette catégorie.");
     }
   };
 
@@ -128,13 +114,11 @@ export default function TarifsPage({ sub }: { sub: string }) {
   };
 
   const handleDeleteTrajet = async (id: string) => {
-    if (confirm("Supprimer cet horaire de traversée ?")) {
-      try {
-        await deleteTrajetMutation.mutateAsync(id);
-        toast.success("Horaire de traversée supprimé.");
-      } catch (err) {
-        toast.error("Impossible de supprimer cet horaire.");
-      }
+    try {
+      await deleteTrajetMutation.mutateAsync(id);
+      toast.success("Horaire de traversée supprimé.");
+    } catch (err) {
+      toast.error("Impossible de supprimer cet horaire.");
     }
   };
 
@@ -163,6 +147,7 @@ export default function TarifsPage({ sub }: { sub: string }) {
                 </div>
               </div>
               <div className="flex gap-2">
+                {/**Add loader on submit button */}
                 <button type="submit" className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold">Ajouter</button>
                 <button type="button" className="px-3 py-1.5 border rounded-lg text-xs" onClick={() => setShowAddTarif(false)}>Annuler</button>
               </div>

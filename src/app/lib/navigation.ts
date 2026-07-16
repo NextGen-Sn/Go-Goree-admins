@@ -9,9 +9,6 @@ export const NAV: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: undefined, page: "dashboard" },
   { id: "voyages", label: "Voyages", icon: undefined, children: [
     { label: "Liste des voyages", page: "voyages-liste" },
-    { label: "Créer un voyage", page: "voyages-creer" },
-    { label: "Modifier un voyage", page: "voyages-modifier" },
-    { label: "Planning", page: "voyages-planning" },
     { label: "Historique", page: "voyages-historique" },
   ]},
   { id: "billets", label: "Billets", icon: undefined, children: [

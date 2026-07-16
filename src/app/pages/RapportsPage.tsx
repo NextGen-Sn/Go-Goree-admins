@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PageHeader, Btn, Card, Table } from "@/app/components/ui/Shared";
+import { PageHeader, Btn, Card, Table , Loader } from "@/app/components/ui/Shared";
 import { FileText, Download, Plus } from "lucide-react";
 import { useRapports, useGenerateRapport } from "@/app/hooks/rapports/useRapports";
 import { laravelClient } from "@/app/api/laravelClient";
@@ -69,8 +69,8 @@ export default function RapportsPage({ sub }: { sub: string }) {
   if (sub === "generer") {
     return (
       <div className="p-6">
-        {feedback}
         <PageHeader title="Générer un rapport" subtitle="Créez des rapports personnalisés" />
+      <Loader isLoading={isLoading} isError={isError} />
         <div className="grid grid-cols-2 gap-6">
           <Card>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Configuration</h3>
@@ -133,7 +133,7 @@ export default function RapportsPage({ sub }: { sub: string }) {
 
   return (
     <div className="p-6">
-      {feedback}
+      <Loader isLoading={isLoading} isError={isError} />
       <PageHeader title="Historique des rapports" subtitle="Tous les rapports générés par le système" />
       <Card>
         <Table

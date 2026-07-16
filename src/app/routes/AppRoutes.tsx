@@ -35,10 +35,8 @@ export default function AppRoutes({ darkMode, onDark }: { darkMode: boolean; onD
 
         {/* Voyages */}
         <Route path="/voyages" element={<VoyagesPage sub="liste" />} />
-        <Route path="/voyages/creer" element={<VoyagesPage sub="creer" />} />
-        <Route path="/voyages/modifier" element={<VoyagesPage sub="modifier" />} />
-        <Route path="/voyages/planning" element={<VoyagesPage sub="planning" />} />
         <Route path="/voyages/historique" element={<VoyagesPage sub="historique" />} />
+        <Route path="/voyages/planning" element={<VoyagesPage sub="planning" />} />
 
         {/* Billets */}
         <Route path="/billets" element={<BilletsPage sub="liste" />} />
@@ -48,7 +46,6 @@ export default function AppRoutes({ darkMode, onDark }: { darkMode: boolean; onD
 
         {/* Contrôleurs */}
         <Route path="/controleurs" element={<CtrlPage sub="liste" />} />
-        <Route path="/controleurs/planning" element={<CtrlPage sub="planning" />} />
 
         {/* Chaloupes */}
         <Route path="/chaloupes" element={<ChaloupesPage />} />
