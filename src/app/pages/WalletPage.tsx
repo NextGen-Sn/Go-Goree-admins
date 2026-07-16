@@ -1,4 +1,4 @@
-import { PageHeader, Btn, Card, Table } from "@/app/components/ui/Shared";
+import { PageHeader, Btn, Card, Table , Loader } from "@/app/components/ui/Shared";
 import { C, Badge, StatusBadge, cn } from "@/app/components/layout/common";
 import { Download, ArrowUpRight, ArrowDownRight, Database } from "lucide-react";
 import { 
@@ -48,6 +48,7 @@ export default function WalletPage({ sub }: { sub: string }) {
       return (
         <div className="p-6">
           <PageHeader title="Export wallet" subtitle="Télécharger les données du portefeuille" />
+      <Loader isLoading={isLoading} isError={isError} />
           <div className="grid grid-cols-2 gap-6">
             <Card>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Paramètres d'export</h3>
@@ -88,7 +89,6 @@ export default function WalletPage({ sub }: { sub: string }) {
 
     return (
       <div className="p-6">
-        {feedback}
         <PageHeader title={labels[sub] ?? sub} subtitle="Historique des opérations wallet"
           actions={<Btn label="Exporter" icon={Download} variant="secondary" />} />
         <Card>
@@ -111,7 +111,7 @@ export default function WalletPage({ sub }: { sub: string }) {
 
   return (
     <div className="p-6">
-      {feedback}
+      <Loader isLoading={isLoading} isError={isError} />
       <PageHeader title="Wallet — Solde global" subtitle="Vue d'ensemble du portefeuille électronique" />
       <div className="grid grid-cols-3 gap-4 mb-6">
         <Card className="col-span-1 py-6 text-white shadow-lg" style={{ background: "linear-gradient(135deg, #1A56DB, #0BA5C0)" }}>

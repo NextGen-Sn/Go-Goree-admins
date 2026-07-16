@@ -1,5 +1,6 @@
+import { useConfirm } from "@/app/hooks/useConfirm";
 import { useState } from "react";
-import { PageHeader, Btn, Card, Table } from "@/app/components/ui/Shared";
+import { PageHeader, Btn, Card, Table, Loader } from "@/app/components/ui/Shared";
 import { C, StatusBadge } from "@/app/components/layout/common";
 import { Anchor, Edit, CheckCircle, Plus, X, Trash2 } from "lucide-react";
 import { 
@@ -11,6 +12,7 @@ import {
 import { toast } from "sonner";
 
 export default function ChaloupesPage() {
+  const { confirmAction, ConfirmModal } = useConfirm();
   const { data: chaloupes = [], isLoading, isError } = useChaloupes();
   const createMutation = useCreateChaloupe();
   const updateMutation = useUpdateChaloupe();
@@ -92,21 +94,22 @@ export default function ChaloupesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Supprimer cette chaloupe définitivement ?")) {
+    confirmAction("Suppression Chaloupe", "Supprimer cette chaloupe définitivement ?", async () => {
       try {
         await deleteMutation.mutateAsync(id);
         toast.success("Chaloupe supprimée.");
       } catch (err) {
         toast.error("Impossible de supprimer cette chaloupe.");
       }
-    }
+    });
   };
 
   return (
     <div className="p-6">
-      {feedback}
+      <ConfirmModal />
       <PageHeader title="Flotte de chaloupes" subtitle={`${chaloupes.length} embarcations enregistrées`}
         actions={<Btn label="Ajouter chaloupe" icon={Plus} variant="primary" onClick={handleOpenAdd} />} />
+      <Loader isLoading={isLoading} isError={isError} />
 
       {showForm && (
         <Card className="mb-6 border-2 border-blue-200 bg-blue-50/20 max-w-2xl">

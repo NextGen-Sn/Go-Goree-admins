@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, PageHeader } from "@/app/components/ui/Shared";
+import { Card, PageHeader , Loader } from "@/app/components/ui/Shared";
 import { C, Badge, cn } from "@/app/components/layout/common";
 import { Phone, Mail } from "lucide-react";
 import { usePassagers } from "@/app/hooks/passagers/usePassagers";
@@ -29,8 +29,8 @@ export default function PassagersPage() {
 
   return (
     <div className="p-6">
-      {feedback}
       <PageHeader title="Profil passager" subtitle="Sélectionnez un passager pour afficher son profil" />
+      <Loader isLoading={isLoading} isError={isError} />
 
       {passagers.length === 0 ? (
         <Card className="py-10 text-center text-sm text-slate-400">Aucun passager enregistré.</Card>

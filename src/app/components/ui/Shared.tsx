@@ -58,21 +58,31 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   );
 }
 
-export function Btn({ label, icon: Icon, variant = "primary", onClick }: { label: string; icon?: React.ElementType; variant?: "primary" | "secondary" | "ghost" | "danger"; onClick?: () => void; }) {
-  const base = "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer";
+export function Btn({ label, icon: Icon, variant = "primary", onClick, loading, disabled, type = "button", className }: { label: string; icon?: React.ElementType; variant?: "primary" | "secondary" | "ghost" | "danger" | "success"; onClick?: () => void; loading?: boolean; disabled?: boolean; type?: "button" | "submit" | "reset"; className?: string }) {
+  const base = "inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer relative overflow-hidden";
   const vars: Record<string, string> = {
     primary: "text-white shadow-sm hover:opacity-90",
     secondary: "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700",
     ghost: "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700",
-    danger: "bg-red-500 hover:bg-red-600 text-white",
+    danger: "bg-rose-600 hover:bg-rose-700 text-white",
+    success: "bg-emerald-600 hover:bg-emerald-700 text-white",
   };
   return (
     <button
-      className={cn(base, vars[variant])}
+      type={type}
+      disabled={loading || disabled}
+      className={cn(base, vars[variant], (loading || disabled) && "opacity-70 cursor-not-allowed", className)}
       style={variant === "primary" ? { background: "linear-gradient(135deg, #1A56DB, #0BA5C0)" } as React.CSSProperties : undefined}
       onClick={onClick}
     >
-      {Icon && <Icon size={15} />}
+      {loading ? (
+        <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      ) : (
+        Icon && <Icon size={15} />
+      )}
       {label}
     </button>
   );
@@ -132,6 +142,51 @@ export function OccBar({ val }: { val: number }) {
         <div className="h-full rounded-full" style={{ width: `${val}%`, background: `linear-gradient(90deg, #1035A8, #0BA5C0)` }} />
       </div>
       <span className="text-xs font-mono text-slate-600 w-8 text-right">{val}%</span>
+    </div>
+  );
+}
+
+export function Loader({ isLoading, isError, message }: { isLoading?: boolean; isError?: boolean; message?: string }) {
+  if (!isLoading && !isError) return null;
+
+  return (
+    <div className="w-full flex flex-col items-center justify-center min-h-[50vh]">
+      {isError && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-6 py-4 text-sm font-medium text-amber-700 dark:text-amber-400 mb-2 shadow-sm text-center">
+          Données indisponibles — Impossible de joindre le serveur.
+        </div>
+      )}
+      {isLoading && (
+        <div className="flex flex-col items-center justify-center p-10 space-y-5">
+          <div className="flex items-center justify-center gap-2.5">
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                className="size-4 rounded-full shadow-[0_0_15px_rgba(11,165,192,0.6)]"
+                style={{ background: "linear-gradient(135deg, #1035A8, #0BA5C0)" }}
+                animate={{
+                  y: ["0%", "-120%", "0%"],
+                  scale: [1, 1.4, 1],
+                  opacity: [0.4, 1, 0.4]
+                }}
+                transition={{
+                  duration: 0.8,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: i * 0.15
+                }}
+              />
+            ))}
+          </div>
+          <motion.div 
+            animate={{ opacity: [0.3, 1, 0.3] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+            className="text-xs font-bold uppercase tracking-[0.25em] bg-clip-text text-transparent bg-gradient-to-r from-[#1035A8] to-[#0BA5C0]"
+          >
+            {message || "Chargement des données..."}
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

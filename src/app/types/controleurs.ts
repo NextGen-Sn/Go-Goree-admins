@@ -3,8 +3,6 @@ export interface Controleur {
   nom: string;
   tel: string;
   email: string;
-  shift: string;
-  chaloupe: string;
   statut: string;
   invitePending?: boolean;
   passwordResetAt?: string | null;

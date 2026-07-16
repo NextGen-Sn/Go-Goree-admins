@@ -7,8 +7,6 @@ function mapControleur(backendUser: any): Controleur {
     nom: `${backendUser.prenom} ${backendUser.nom}`,
     email: backendUser.email || "—",
     tel: backendUser.telephone || "—",
-    shift: "Matin", // Default shift info
-    chaloupe: "Beer", // Default chaloupe info
     statut: backendUser.active ? "Actif" : "Inactif",
     invitePending: backendUser.invite_pending,
     passwordResetAt: backendUser.password_reset_at,
@@ -21,18 +19,7 @@ export async function listControleurs(): Promise<Controleur[]> {
   return items.map(mapControleur);
 }
 
-export async function getControleur(id: string): Promise<Controleur> {
-  const list = await listControleurs();
-  return list.find((c) => c.id === id) ?? list[0];
-}
-
-export async function getPlanningControleurs(): Promise<Controleur[]> {
-  const list = await listControleurs();
-  return list.filter((c) => c.statut === "Actif");
-}
-
 export async function createControleur(payload: { nom: string; email: string; tel: string }): Promise<any> {
-  // Split nom into prenom and nom
   const parts = payload.nom.trim().split(" ");
   const prenom = parts[0];
   const nom = parts.slice(1).join(" ") || "—";

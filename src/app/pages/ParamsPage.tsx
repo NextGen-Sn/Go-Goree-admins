@@ -1,5 +1,6 @@
+import { useConfirm } from "@/app/hooks/useConfirm";
 import { useState, useEffect } from "react";
-import { PageHeader, Btn, Card, Table } from "@/app/components/ui/Shared";
+import { PageHeader, Btn, Card, Table , Loader } from "@/app/components/ui/Shared";
 import { C, StatusBadge, cn } from "@/app/components/layout/common";
 import { Shield, User, Key, Trash2, X, Clipboard, CheckCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -15,6 +16,8 @@ import {
 import { toast } from "sonner";
 
 export default function ParamsPage({ sub }: { sub: string }) {
+  const { confirmAction, ConfirmModal } = useConfirm();
+
   // Query all users to count by role dynamically
   const { data: allUsers = [] } = useQuery({
     queryKey: ["all-users-settings"],

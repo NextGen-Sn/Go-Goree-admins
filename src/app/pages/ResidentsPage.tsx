@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PageHeader, Btn, Card, Table } from "@/app/components/ui/Shared";
+import { PageHeader, Btn, Card, Table , Loader } from "@/app/components/ui/Shared";
 import { C, StatusBadge } from "@/app/components/layout/common";
 import { ChevronLeft, FileSearch, Eye, CheckCircle, XCircle, Calendar, MapPin, Download } from "lucide-react";
 import { 
@@ -65,7 +65,6 @@ function ResidentsListePage() {
 
     return (
       <div className="p-6">
-        {feedback}
         <div className="flex items-center gap-3 mb-6">
           <button onClick={() => { setExamineId(null); setRefuseMode(false); setRefuseReason(""); }}
             className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors font-medium">
@@ -119,14 +118,12 @@ function ResidentsListePage() {
               
               {!refuseMode ? (
                 <div className="space-y-2">
-                  <button onClick={() => handleValider(dem.id)} disabled={traiterMutation.isPending}
-                    className="w-full flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow transition-colors">
-                    <CheckCircle size={14} /> Valider le dossier
-                  </button>
-                  <button onClick={() => setRefuseMode(true)} disabled={traiterMutation.isPending}
-                    className="w-full flex items-center justify-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow transition-colors">
-                    <XCircle size={14} /> Refuser le dossier
-                  </button>
+                  <div className="w-full">
+                    <Btn label="Valider le dossier" icon={CheckCircle} variant="success" onClick={() => handleValider(dem.id)} loading={traiterMutation.isPending} className="w-full" />
+                  </div>
+                  <div className="w-full">
+                    <Btn label="Refuser le dossier" icon={XCircle} variant="danger" onClick={() => setRefuseMode(true)} disabled={traiterMutation.isPending} className="w-full" />
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -137,14 +134,8 @@ function ResidentsListePage() {
                       value={refuseReason} onChange={e => setRefuseReason(e.target.value)} />
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => handleRefuser(dem.id)} disabled={traiterMutation.isPending}
-                      className="flex-1 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-colors">
-                      Confirmer refus
-                    </button>
-                    <button onClick={() => { setRefuseMode(false); setRefuseReason(""); }}
-                      className="px-3 py-1.5 border rounded-lg text-xs font-medium">
-                      Annuler
-                    </button>
+                    <Btn label="Confirmer refus" variant="danger" onClick={() => handleRefuser(dem.id)} loading={traiterMutation.isPending} className="flex-1" />
+                    <Btn label="Annuler" variant="secondary" onClick={() => { setRefuseMode(false); setRefuseReason(""); }} />
                   </div>
                 </div>
               )}
@@ -157,8 +148,8 @@ function ResidentsListePage() {
 
   return (
     <div className="p-6">
-      {feedback}
       <PageHeader title="Demandes en attente" subtitle={`${demandesResidents.length} dossiers à traiter`} />
+      <Loader isLoading={isLoading} isError={isError} />
       
       {demandesResidents.length === 0 ? (
         <Card className="text-center py-12 text-slate-400 text-sm">
@@ -190,11 +181,12 @@ function ResidentsListePage() {
 }
 
 export default function ResidentsPage({ sub }: { sub: string }) {
-  const { data: enAttente = [], isLoading: waitL } = useDemandesEnAttente();
-  const { data: refusees = [], isLoading: refL } = useDemandesRefusees();
-  const { data: historique = [], isLoading: histL } = useDemandesHistorique();
+  const { data: enAttente = [], isLoading: waitL, isError: waitE } = useDemandesEnAttente();
+  const { data: refusees = [], isLoading: refL, isError: refE } = useDemandesRefusees();
+  const { data: historique = [], isLoading: histL, isError: histE } = useDemandesHistorique();
 
   const isLoading = waitL || refL || histL;
+  const isError = waitE || refE || histE;
 
   const feedback = (
     <div className="space-y-2 mb-4">
@@ -211,8 +203,8 @@ export default function ResidentsPage({ sub }: { sub: string }) {
   if (sub === "refusees") {
     return (
       <div className="p-6">
-        {feedback}
         <PageHeader title="Demandes refusées" subtitle="Historique des dossiers rejetés" />
+        <Loader isLoading={isLoading} isError={isError} />
         <Card>
           <Table
             cols={["ID", "Nom", "Date", "Motif de refus", "Décision par"]}
@@ -231,9 +223,9 @@ export default function ResidentsPage({ sub }: { sub: string }) {
 
   return (
     <div className="p-6">
-      {feedback}
       <PageHeader title="Historique des demandes" subtitle="Tous les dossiers traités"
         actions={<Btn label="Exporter" icon={Download} variant="secondary" />} />
+      <Loader isLoading={isLoading} isError={isError} />
       <div className="grid grid-cols-4 gap-3 mb-6">
         {[
           ["Total demandes", historique.length, C.ocean],

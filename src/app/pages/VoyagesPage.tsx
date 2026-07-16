@@ -1,5 +1,6 @@
+import { useConfirm } from "@/app/hooks/useConfirm";
 import { useState } from "react";
-import { PageHeader, Btn, Card, Table, ChartCard, SearchBar } from "@/app/components/ui/Shared";
+import { PageHeader, Btn, Card, Table, ChartCard, SearchBar, Loader } from "@/app/components/ui/Shared";
 import { StatusBadge, cn } from "@/app/components/layout/common";
 import { Plus, Filter, CheckCircle, Edit, Download, Eye, Trash2, Clock, X } from "lucide-react";
 import { 
@@ -14,6 +15,7 @@ import { useTrajets } from "@/app/hooks/trajets/useTrajets";
 import { toast } from "sonner";
 
 export default function VoyagesPage({ sub }: { sub?: string }) {
+  const { confirmAction, ConfirmModal } = useConfirm();
   const s = sub ?? "liste";
 
   const { data: voyages = [], isLoading: vLoading, isError: vError } = useVoyages();
@@ -114,14 +116,14 @@ export default function VoyagesPage({ sub }: { sub?: string }) {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Supprimer ce voyage définitivement ?")) {
+    confirmAction("Suppression Voyage", "Supprimer ce voyage définitivement ?", async () => {
       try {
         await deleteMutation.mutateAsync(id);
         toast.success("Voyage supprimé.");
       } catch (err) {
         toast.error("Impossible de supprimer le voyage.");
       }
-    }
+    });
   };
 
   const handleTriggerGeneration = async () => {
@@ -180,6 +182,7 @@ export default function VoyagesPage({ sub }: { sub?: string }) {
     return (
       <div className="p-6">
         <PageHeader title="Planning des voyages" subtitle={`Semaine du ${weekDays[0].label} au ${weekDays[6].label}`} />
+        <Loader isLoading={vLoading} isError={vError} />
         <Card className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
@@ -233,6 +236,7 @@ export default function VoyagesPage({ sub }: { sub?: string }) {
     return (
       <div className="p-6">
         <PageHeader title="Historique des voyages" subtitle="Données détaillées par jour et par mois" />
+        <Loader isLoading={vLoading} isError={vError} />
         <div className="grid grid-cols-4 gap-4 mb-6">
           {[
             ["Total voyages", "1 247", "#1035A8"], ["Passagers transportés", "563 480", "#0BA5C0"],
@@ -259,7 +263,8 @@ export default function VoyagesPage({ sub }: { sub?: string }) {
 
   return (
     <div className="p-6">
-      {feedback}
+      <ConfirmModal />
+      <Loader isLoading={vLoading} isError={vError} />
 
       {/* Info scheduler and manual trigger */}
       <Card className="mb-6 bg-gradient-to-r from-blue-900 to-indigo-950 text-white border-0 flex items-center justify-between p-6 shadow-lg">
