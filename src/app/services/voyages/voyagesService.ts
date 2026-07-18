@@ -23,6 +23,7 @@ function mapVoyage(backendVoyage: any): Voyage {
     recette: recette,
     date_voyage: backendVoyage.date_voyage,
     heure_depart: trajet.heure_depart ? String(trajet.heure_depart).slice(0, 5) : "00:00",
+    jour: trajet.jour,
   };
 }
 
